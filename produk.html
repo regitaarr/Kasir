@@ -13,8 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- SheetJS for Excel export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- QuaggaJS barcode scanner -->
-    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <!-- QuaggaJS2 barcode scanner (maintained fork, fixes modern browser issues) -->
+    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.7.4/dist/quagga.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -33,10 +33,11 @@
 
     <!-- Sidebar Navigation Container -->
     <aside id="sidebar"
-        class="w-64 bg-white border-r h-screen sticky top-0 flex-shrink-0 z-30 transition-all duration-300"></aside>
+        class="hidden md:flex w-64 bg-white border-r h-screen sticky top-0 flex-shrink-0 z-30 transition-all duration-300 flex-col">
+    </aside>
 
     <!-- Main Content Panel -->
-    <main class="flex-grow p-8 overflow-y-auto">
+    <main class="flex-grow p-4 md:p-8 overflow-y-auto pt-16 md:pt-8">
 
         <!-- Header Section -->
         <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -45,17 +46,17 @@
                 <p class="text-sm text-slate-500 mt-1">Kelola data barang, satuan konversi, harga distributor/jual,
                     serta barcode scan.</p>
             </div>
-            <div class="flex gap-3">
+            <div class="flex flex-wrap gap-2">
                 <button onclick="exportToExcel()"
-                    class="bg-emerald-600 hover:bg-emerald-700 duration-300 text-white rounded-xl py-3 px-5 font-semibold flex items-center gap-2 shadow-lg shadow-emerald-500/20 text-sm">
+                    class="bg-emerald-600 hover:bg-emerald-700 duration-300 text-white rounded-xl py-2.5 px-4 font-semibold flex items-center gap-2 shadow-lg shadow-emerald-500/20 text-sm">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    <span>Export Excel</span>
+                    <span>Export</span>
                 </button>
                 <button onclick="openProductModal('add')"
-                    class="bg-blue-600 hover:bg-blue-700 duration-300 text-white rounded-xl py-3 px-5 font-semibold flex items-center gap-2 shadow-lg shadow-blue-500/20 text-sm">
+                    class="bg-blue-600 hover:bg-blue-700 duration-300 text-white rounded-xl py-2.5 px-4 font-semibold flex items-center gap-2 shadow-lg shadow-blue-500/20 text-sm">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
@@ -931,13 +932,27 @@
 
         function openBarcodeScanner(targetInputId) {
             _scannerTargetId = targetInputId;
-            document.getElementById("scanner-result").textContent = "";
-            document.getElementById("scanner-status").textContent = "Menginisialisasi kamera...";
-            document.getElementById("scanner-modal").classList.remove("hidden");
+
+            const resultEl = document.getElementById("scanner-result");
+            const statusEl = document.getElementById("scanner-status");
+            const modalEl = document.getElementById("scanner-modal");
+            const vp = document.getElementById("scanner-viewport");
+
+            resultEl.textContent = "";
+            statusEl.textContent = "Menginisialisasi kamera...";
+            modalEl.classList.remove("hidden");
+
+            // Stop running scanner first (prevent double-init)
+            if (_scannerRunning) {
+                try { Quagga.stop(); } catch (e) { }
+                _scannerRunning = false;
+            }
 
             // Clear viewport
-            const vp = document.getElementById("scanner-viewport");
             vp.innerHTML = "";
+
+            // Remove any old listeners BEFORE init
+            try { Quagga.offDetected(); } catch (e) { }
 
             Quagga.init({
                 inputStream: {
@@ -945,54 +960,68 @@
                     type: "LiveStream",
                     target: vp,
                     constraints: {
-                        width: { ideal: 640 },
-                        height: { ideal: 280 },
+                        width: { min: 320, ideal: 640, max: 1280 },
+                        height: { min: 240, ideal: 480, max: 720 },
                         facingMode: "environment"
                     }
                 },
+                locator: {
+                    patchSize: "medium",
+                    halfSample: false
+                },
+                numOfWorkers: 0,
+                frequency: 10,
                 decoder: {
                     readers: [
-                        "ean_reader", "ean_8_reader",
-                        "code_128_reader", "code_39_reader",
-                        "upc_reader", "upc_e_reader"
-                    ]
+                        "ean_reader",
+                        "ean_8_reader",
+                        "code_128_reader",
+                        "code_39_reader",
+                        "upc_reader",
+                        "upc_e_reader"
+                    ],
+                    multiple: false
                 },
                 locate: true
             }, function (err) {
                 if (err) {
-                    document.getElementById("scanner-status").textContent = "Gagal membuka kamera: " + err.message;
+                    console.error("Quagga init error:", err);
+                    const msg = (typeof err === "string") ? err : (err.message || JSON.stringify(err));
+                    statusEl.textContent = "❌ Gagal membuka kamera: " + msg;
+                    statusEl.style.color = "#ef4444";
                     return;
                 }
                 Quagga.start();
                 _scannerRunning = true;
-                document.getElementById("scanner-status").textContent = "Kamera aktif — arahkan ke barcode";
+                statusEl.textContent = "📷 Kamera aktif — arahkan ke barcode";
+                statusEl.style.color = "";
             });
 
-            Quagga.offDetected(); // clear old listeners
             Quagga.onDetected(function (result) {
-                const code = result.codeResult.code;
+                const code = result && result.codeResult && result.codeResult.code;
                 if (!code) return;
 
-                // Fill target input
+                // Isi input target
                 const input = document.getElementById(_scannerTargetId);
                 if (input) {
                     input.value = code;
                     input.dispatchEvent(new Event("input"));
                 }
 
-                document.getElementById("scanner-result").textContent = "✅ Terdeteksi: " + code;
+                resultEl.textContent = "✅ Terdeteksi: " + code;
 
-                // Auto close after short delay
-                setTimeout(() => closeBarcodeScanner(), 800);
+                // Tutup scanner otomatis
+                setTimeout(() => closeBarcodeScanner(), 700);
             });
         }
 
         function closeBarcodeScanner() {
             document.getElementById("scanner-modal").classList.add("hidden");
             if (_scannerRunning) {
-                Quagga.stop();
+                try { Quagga.stop(); } catch (e) { }
                 _scannerRunning = false;
             }
+            try { Quagga.offDetected(); } catch (e) { }
         }
 
     </script>
