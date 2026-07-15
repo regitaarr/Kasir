@@ -1,0 +1,458 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Kasir Toko Arrahma</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .main-gradient {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+        }
+
+        .glass-card {
+            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex bg-slate-50">
+
+    <!-- Sidebar Navigation Container -->
+    <aside id="sidebar"
+        class="w-64 bg-white border-r h-screen sticky top-0 flex-shrink-0 z-30 transition-all duration-300"></aside>
+
+    <!-- Main Content Panel -->
+    <main class="flex-grow p-8 overflow-y-auto">
+        <!-- Banner Greeting Header -->
+        <header
+            class="main-gradient text-white rounded-3xl p-8 mb-8 shadow-xl flex justify-between items-center relative overflow-hidden">
+            <div class="absolute right-0 top-0 bottom-0 opacity-10 flex items-center pr-8 pointer-events-none">
+                <svg class="w-64 h-64 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                        d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                </svg>
+            </div>
+            <div class="relative z-10">
+                <h1 id="profile-greeting" class="text-2xl md:text-3xl font-light">Selamat datang...</h1>
+                <p class="text-blue-100 mt-2 font-medium">Berikut adalah rangkuman performa toko hari ini.</p>
+            </div>
+            <div id="live-time" class="text-right hidden md:block relative z-10">
+                <p class="text-lg font-semibold" id="time-hours">00:00:00</p>
+                <p class="text-xs text-blue-200 mt-1" id="time-date">Selasa, 14 Juli 2026</p>
+            </div>
+        </header>
+
+        <!-- Stats Grid Dashboard -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+            <!-- Omzet Hari Ini Card -->
+            <div
+                class="glass-card rounded-2xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md transition duration-300 transform hover:-translate-y-0.5">
+                <div class="bg-gradient-to-tr from-emerald-100 to-emerald-50 text-emerald-600 p-4 rounded-xl">
+                    <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-semibold block uppercase tracking-wider">Omzet Hari
+                        Ini</span>
+                    <h3 id="stat-omzet" class="text-xl font-bold text-slate-800 mt-1">Rp 0</h3>
+                </div>
+            </div>
+
+            <!-- Transaksi Hari Ini Card -->
+            <div
+                class="glass-card rounded-2xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md transition duration-300 transform hover:-translate-y-0.5">
+                <div class="bg-gradient-to-tr from-blue-100 to-blue-50 text-blue-600 p-4 rounded-xl">
+                    <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-semibold block uppercase tracking-wider">Transaksi Hari
+                        Ini</span>
+                    <h3 id="stat-transaksi" class="text-xl font-bold text-slate-800 mt-1">0</h3>
+                </div>
+            </div>
+
+            <!-- Total Produk Card -->
+            <div
+                class="glass-card rounded-2xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md transition duration-300 transform hover:-translate-y-0.5">
+                <div class="bg-gradient-to-tr from-violet-100 to-violet-50 text-violet-600 p-4 rounded-xl">
+                    <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-semibold block uppercase tracking-wider">Total
+                        Produk</span>
+                    <h3 id="stat-produk" class="text-xl font-bold text-slate-800 mt-1">0</h3>
+                </div>
+            </div>
+
+            <!-- Kategori Terlaris Card -->
+            <div
+                class="glass-card rounded-2xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md transition duration-300 transform hover:-translate-y-0.5">
+                <div class="bg-gradient-to-tr from-amber-100 to-amber-50 text-amber-600 p-4 rounded-xl">
+                    <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-semibold block uppercase tracking-wider">Kategori
+                        Terlaris</span>
+                    <h3 id="stat-kategori" class="text-xl font-bold text-slate-800 mt-1">-</h3>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Low Stock + Chart Kategori + Menu Cepat -->
+        <section class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+
+            <!-- Barang Stok Rendah Card -->
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Stok Hampir Habis (Peringatan &lt; 10)</h2>
+                        <p class="text-xs text-slate-400 mt-1">Segera hubungi supplier untuk mengisi ulang persediaan
+                            berikut.</p>
+                    </div>
+                    <span id="low-stock-count"
+                        class="bg-rose-100 text-rose-800 text-xs px-2.5 py-1 rounded-full font-bold">0 Barang</span>
+                </div>
+                <div class="flex-grow overflow-x-auto min-h-[300px]">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-slate-400 text-xs font-semibold uppercase border-b bg-slate-50">
+                                <th class="px-6 py-4">Nomor</th>
+                                <th class="px-6 py-4">Nama Produk</th>
+                                <th class="px-6 py-4">Kategori</th>
+                                <th class="px-6 py-4">Stok Saat Ini</th>
+                                <th class="px-6 py-4">Satuan Dasar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="low-stock-body" class="divide-y text-slate-600 text-sm">
+                            <tr>
+                                <td colspan="5" class="text-center py-12 text-slate-400">Loading data produk hampir
+                                    habis...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Grafik Kategori Produk Terlaris -->
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 flex flex-col">
+                <div class="mb-5">
+                    <h2 class="text-lg font-bold text-slate-800">Kategori Produk Terlaris</h2>
+                    <p class="text-xs text-slate-400 mt-1">Berdasarkan total item terjual bulan ini.</p>
+                </div>
+                <div class="flex items-center justify-center" style="height:200px;">
+                    <canvas id="chart-kategori" style="max-height:200px;"></canvas>
+                </div>
+                <p id="chart-empty" class="text-center text-slate-400 text-sm hidden">Belum ada data penjualan bulan
+                    ini.</p>
+            </div>
+
+            <!-- Quick Navigation Shortcuts -->
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 mb-6">Menu Cepat</h2>
+                    <div class="grid grid-cols-1 gap-4">
+
+                        <!-- Kasir shortcut -->
+                        <a href="kasir.html"
+                            class="group flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:border-blue-500 hover:bg-blue-50/30 transition duration-300">
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="bg-blue-50 group-hover:bg-blue-100 text-blue-600 p-3 rounded-xl transition duration-300">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-slate-800 text-sm">Buka Kasir</h4>
+                                    <p class="text-xs text-slate-400 mt-0.5">Mulai penjualan produk eceran</p>
+                                </div>
+                            </div>
+                            <svg class="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </a>
+
+                        <!-- Customer shortcut -->
+                        <a href="hutang.html"
+                            class="group flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:border-rose-500 hover:bg-rose-50/30 transition duration-300">
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="bg-rose-50 group-hover:bg-rose-100 text-rose-600 p-3 rounded-xl transition duration-300">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-slate-800 text-sm">Kelola Customer</h4>
+                                    <p class="text-xs text-slate-400 mt-0.5">Catatan hutang & pembayaran</p>
+                                </div>
+                            </div>
+                            <svg class="w-5 h-5 text-slate-400 group-hover:text-rose-600 transition" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </a>
+
+                        <!-- Owner-only shortcut link to Produk -->
+                        <a href="produk.html" id="shortcut-produk"
+                            class="group flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:border-violet-500 hover:bg-violet-50/30 transition duration-300 hidden">
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="bg-violet-50 group-hover:bg-violet-100 text-violet-600 p-3 rounded-xl transition duration-300">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-slate-800 text-sm">Kelola Produk</h4>
+                                    <p class="text-xs text-slate-400 mt-0.5">Update harga, stok, & barcode</p>
+                                </div>
+                            </div>
+                            <svg class="w-5 h-5 text-slate-400 group-hover:text-violet-600 transition" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div class="mt-8 border-t pt-4 text-center">
+                    <p class="text-xs font-semibold text-slate-400">Toko Arrahma Point of Sale System</p>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Shared JS Setup -->
+    <script src="shared.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Initialize main layout
+            initLayout("dashboard");
+
+            // Display product shortcut button if owner
+            const loggedInUser = checkAuth();
+            if (loggedInUser && loggedInUser.role === "owner") {
+                const prodShortcut = document.getElementById("shortcut-produk");
+                if (prodShortcut) prodShortcut.classList.remove("hidden");
+            }
+
+            // Start live clock
+            startClock();
+
+            // Fetch and update dashboard metrics
+            await loadDashboardMetrics();
+        });
+
+        // Current real-time clock indicator
+        function startClock() {
+            const timeHoursEl = document.getElementById("time-hours");
+            const timeDateEl = document.getElementById("time-date");
+            const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+            setInterval(() => {
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                timeHoursEl.textContent = `${hours}:${minutes}:${seconds}`;
+
+                const dayName = days[now.getDay()];
+                const date = now.getDate();
+                const monthName = months[now.getMonth()];
+                const year = now.getFullYear();
+                timeDateEl.textContent = `${dayName}, ${date} ${monthName} ${year}`;
+            }, 1000);
+        }
+
+        // Fetch metrics from live Supabase DB
+        async function loadDashboardMetrics() {
+            try {
+                // 1. Calculate today's time window bounds (Local zone start and end in ISO format)
+                const startOfDay = new Date();
+                startOfDay.setHours(0, 0, 0, 0);
+                const endOfDay = new Date();
+                endOfDay.setHours(23, 59, 59, 999);
+
+                // Fetch sales logic
+                const { data: sales, error: salesErr } = await supabaseClient
+                    .from("sales")
+                    .select("total_belanja")
+                    .gte("created_at", startOfDay.toISOString())
+                    .lte("created_at", endOfDay.toISOString());
+
+                if (salesErr) throw salesErr;
+
+                // Calulate today's Omzet & transaction count
+                let omzet = 0;
+                let isinya = sales || [];
+                isinya.forEach(sale => {
+                    omzet += parseFloat(sale.total_belanja || 0);
+                });
+                document.getElementById("stat-omzet").textContent = formatRupiah(omzet);
+                document.getElementById("stat-transaksi").textContent = isinya.length;
+
+                // 2. Fetch total unique product count
+                const { count: productCount, error: prodErr } = await supabaseClient
+                    .from("products")
+                    .select("*", { count: 'exact', head: true });
+
+                if (prodErr) throw prodErr;
+                document.getElementById("stat-produk").textContent = productCount || 0;
+
+                // 3. Fetch kategori terlaris bulan ini dari sale_details
+                const startOfMonth = new Date();
+                startOfMonth.setDate(1);
+                startOfMonth.setHours(0, 0, 0, 0);
+
+                const { data: saleDetails, error: detailErr } = await supabaseClient
+                    .from("sale_details")
+                    .select("qty_jual, product_units(products(kategori)), sales!inner(created_at)")
+                    .gte("sales.created_at", startOfMonth.toISOString());
+
+                if (detailErr) throw detailErr;
+
+                // Hitung total qty per kategori
+                const kategoriMap = {};
+                (saleDetails || []).forEach(d => {
+                    const kat = d.product_units?.products?.kategori || "Lainnya";
+                    kategoriMap[kat] = (kategoriMap[kat] || 0) + (d.qty_jual || 0);
+                });
+
+                const sortedKat = Object.entries(kategoriMap).sort((a, b) => b[1] - a[1]);
+
+                // Update stat card: kategori #1
+                const topKat = sortedKat[0];
+                document.getElementById("stat-kategori").textContent = topKat ? `${topKat[0]} (${topKat[1]} terjual)` : "-";
+
+                // Render Chart.js horizontal bar
+                const canvasEl = document.getElementById("chart-kategori");
+                const emptyEl = document.getElementById("chart-empty");
+
+                if (sortedKat.length === 0) {
+                    canvasEl.classList.add("hidden");
+                    emptyEl.classList.remove("hidden");
+                } else {
+                    const labels = sortedKat.map(k => k[0]);
+                    const values = sortedKat.map(k => k[1]);
+                    const colors = [
+                        "rgba(59,130,246,0.8)", "rgba(16,185,129,0.8)", "rgba(139,92,246,0.8)",
+                        "rgba(245,158,11,0.8)", "rgba(239,68,68,0.8)", "rgba(20,184,166,0.8)"
+                    ];
+
+                    new Chart(canvasEl, {
+                        type: "pie",
+                        data: {
+                            labels,
+                            datasets: [{
+                                data: values,
+                                backgroundColor: labels.map((_, i) => colors[i % colors.length]),
+                                borderWidth: 2,
+                                borderColor: "#fff"
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: "bottom",
+                                    labels: {
+                                        padding: 14,
+                                        font: { size: 11, family: "Inter" },
+                                        usePointStyle: true
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: ctx => ` ${ctx.label}: ${ctx.parsed} item terjual`
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // 4. Fetch Low Stock Items (stok_dasar < 10)
+                const { data: lowStockProds, error: lowStockErr } = await supabaseClient
+                    .from("products")
+                    .select("*")
+                    .lt("stok_dasar", 10)
+                    .order("stok_dasar", { ascending: true });
+
+                if (lowStockErr) throw lowStockErr;
+
+                const bodyEl = document.getElementById("low-stock-body");
+                const countBadgeEl = document.getElementById("low-stock-count");
+
+                if (!lowStockProds || lowStockProds.length === 0) {
+                    bodyEl.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center py-12 text-slate-400 font-medium">Semua stok produk mencukupi ðŸ‘</td>
+                        </tr>
+                    `;
+                    countBadgeEl.textContent = "0 Barang";
+                    countBadgeEl.className = "bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold";
+                } else {
+                    countBadgeEl.textContent = `${lowStockProds.length} Barang`;
+                    countBadgeEl.className = "bg-rose-100 text-rose-800 text-xs px-2.5 py-1 rounded-full font-bold";
+
+                    bodyEl.innerHTML = lowStockProds.map((p, idx) => `
+                        <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-b-0">
+                            <td class="px-6 py-4 text-slate-500 font-medium">${idx + 1}</td>
+                            <td class="px-6 py-4 font-semibold text-slate-800">${p.nama_barang}</td>
+                            <td class="px-6 py-4">${p.kategori || '-'}</td>
+                            <td class="px-6 py-4 font-bold text-rose-600">${p.stok_dasar}</td>
+                            <td class="px-6 py-4 text-slate-500 font-medium">${p.satuan_dasar || '-'}</td>
+                        </tr>
+                    `).join("");
+                }
+
+            } catch (err) {
+                console.error("Dashboard error:", err);
+                alert("Gagal memuat visual data dashboard: " + err.message);
+            }
+        }
+    </script>
+</body>
+
+</html>

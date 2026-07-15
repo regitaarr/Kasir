@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riwayat Transaksi - Kasir Toko Arrahma</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .glass-card {
+            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        #detail-modal.show #detail-modal-card {
+            transform: scale(1);
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex bg-slate-50">
+
+    <!-- Sidebar Navigation Container -->
+    <aside id="sidebar"
+        class="w-64 bg-white border-r h-screen sticky top-0 flex-shrink-0 z-30 transition-all duration-300"></aside>
+
+    <!-- Main Content Panel -->
+    <main class="flex-grow p-8 overflow-y-auto">
+
+        <!-- Header Section -->
+        <header class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Riwayat Transaksi</h1>
+                <p class="text-sm text-slate-500 mt-1">Telusuri seluruh riwayat penjualan berdasarkan rentang tanggal.
+                </p>
+            </div>
+            <button onclick="exportToExcel()" id="btn-export"
+                class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-2.5 px-5 rounded-xl shadow-md transition duration-300 disabled:opacity-50">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Unduh Excel
+            </button>
+        </header>
+
+        <!-- Filter Panel -->
+        <section class="glass-card rounded-2xl p-6 mb-8 shadow-sm">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+
+                <!-- Tanggal Mulai -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-2">Dari Tanggal</label>
+                    <input id="filter-dari" type="date"
+                        class="w-full border border-slate-200 rounded-xl py-2.5 px-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white">
+                </div>
+
+                <!-- Tanggal Selesai -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-2">Sampai Tanggal</label>
+                    <input id="filter-sampai" type="date"
+                        class="w-full border border-slate-200 rounded-xl py-2.5 px-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white">
+                </div>
+
+                <!-- Filter Metode Bayar -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-2">Metode Bayar</label>
+                    <select id="filter-metode"
+                        class="w-full border border-slate-200 rounded-xl py-2.5 px-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 bg-white">
+                        <option value="ALL">Semua Metode</option>
+                        <option value="Tunai">Tunai</option>
+                        <option value="Nominal QRIS">QRIS</option>
+                        <option value="Debit Card">Debit / Transfer</option>
+                    </select>
+                </div>
+
+                <!-- Tombol Filter -->
+                <div class="flex gap-2">
+                    <button onclick="loadTransactions()"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2.5 px-4 rounded-xl transition duration-300">
+                        Tampilkan
+                    </button>
+                    <button onclick="resetFilter()"
+                        class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm py-2.5 px-4 rounded-xl transition duration-300">
+                        Reset
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+            <div class="glass-card rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                <div class="bg-blue-50 text-blue-600 p-3.5 rounded-xl">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-semibold uppercase">Total Transaksi</span>
+                    <h3 id="sum-transaksi" class="text-xl font-bold text-slate-800 mt-0.5">0</h3>
+                </div>
+            </div>
+            <div class="glass-card rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                <div class="bg-emerald-50 text-emerald-600 p-3.5 rounded-xl">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-semibold uppercase">Total Omzet</span>
+                    <h3 id="sum-omzet" class="text-xl font-bold text-slate-800 mt-0.5">Rp 0</h3>
+                </div>
+            </div>
+            <div class="glass-card rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                <div class="bg-violet-50 text-violet-600 p-3.5 rounded-xl">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-semibold uppercase">Rata-Rata Transaksi</span>
+                    <h3 id="sum-rata" class="text-xl font-bold text-slate-800 mt-0.5">Rp 0</h3>
+                </div>
+            </div>
+        </section>
+
+        <!-- Transactions Table -->
+        <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">Daftar Transaksi</h2>
+                    <p id="table-info" class="text-xs text-slate-400 mt-1">Pilih rentang tanggal dan klik Tampilkan.</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-slate-400 text-xs font-semibold uppercase border-b bg-slate-50">
+                            <th class="px-6 py-4">No Struk</th>
+                            <th class="px-6 py-4">Waktu Transaksi</th>
+                            <th class="px-6 py-4">Pelanggan</th>
+                            <th class="px-6 py-4">Metode Bayar</th>
+                            <th class="px-6 py-4">Total Belanja</th>
+                            <th class="px-6 py-4">Bayar / DP</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4 text-right">Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaction-body" class="divide-y text-slate-600 text-sm">
+                        <tr>
+                            <td colspan="8" class="text-center py-16 text-slate-400 font-medium">
+                                Pilih rentang tanggal lalu klik <strong class="text-blue-500">Tampilkan</strong> untuk
+                                memuat data.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal: Detail Transaksi -->
+    <div id="detail-modal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300"
+            id="detail-modal-card">
+
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-3xl">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Detail Transaksi</h3>
+                    <p id="detail-no-struk" class="text-xs text-slate-400 mt-1">No Struk: -</p>
+                </div>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 transition">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-5">
+                <!-- Info Grid -->
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div class="bg-slate-50 rounded-xl p-4">
+                        <span class="text-xs text-slate-400 font-semibold uppercase block mb-1">Waktu</span>
+                        <span id="d-waktu" class="font-bold text-slate-700">-</span>
+                    </div>
+                    <div class="bg-slate-50 rounded-xl p-4">
+                        <span class="text-xs text-slate-400 font-semibold uppercase block mb-1">Metode Bayar</span>
+                        <span id="d-metode" class="font-bold text-slate-700">-</span>
+                    </div>
+                    <div class="bg-slate-50 rounded-xl p-4">
+                        <span class="text-xs text-slate-400 font-semibold uppercase block mb-1">Total Belanja</span>
+                        <span id="d-total" class="font-bold text-blue-600 text-base">-</span>
+                    </div>
+                    <div class="bg-slate-50 rounded-xl p-4">
+                        <span class="text-xs text-slate-400 font-semibold uppercase block mb-1">Bayar / DP</span>
+                        <span id="d-bayar" class="font-bold text-emerald-600 text-base">-</span>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-3">Item Pembelian</h4>
+                    <div class="border rounded-2xl overflow-hidden">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-50 border-b">
+                                    <th class="p-3 font-semibold text-slate-500">Produk</th>
+                                    <th class="p-3 font-semibold text-slate-500">Satuan</th>
+                                    <th class="p-3 font-semibold text-slate-500">Qty</th>
+                                    <th class="p-3 font-semibold text-slate-500 text-right">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detail-items-body" class="divide-y text-slate-700 font-medium">
+                                <tr>
+                                    <td colspan="4" class="text-center p-6 text-slate-400">Memuat...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-100 flex justify-end bg-slate-50/50 rounded-b-3xl">
+                <button onclick="closeDetailModal()"
+                    class="py-2.5 px-6 bg-slate-800 text-white hover:bg-slate-900 rounded-xl font-semibold text-sm shadow-md transition duration-300">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shared JS Setup -->
+    <script src="shared.js"></script>
+    <script>
+        let allTransactions = [];
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            initLayout("riwayat");
+
+            // Set default filter: bulan ini
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            document.getElementById("filter-dari").value = formatDate(firstDay);
+            document.getElementById("filter-sampai").value = formatDate(today);
+
+            await loadTransactions();
+        });
+
+        // Format date to YYYY-MM-DD for input
+        function formatDate(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${dd}`;
+        }
+
+        // Load transactions from Supabase
+        async function loadTransactions() {
+            const dari = document.getElementById("filter-dari").value;
+            const sampai = document.getElementById("filter-sampai").value;
+            const metode = document.getElementById("filter-metode").value;
+            const body = document.getElementById("transaction-body");
+
+            if (!dari || !sampai) {
+                alert("Mohon pilih rentang tanggal terlebih dahulu!");
+                return;
+            }
+
+            body.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-slate-400">Memuat data transaksi...</td></tr>`;
+
+            try {
+                // Build time bounds (full day coverage)
+                const startISO = new Date(dari + "T00:00:00").toISOString();
+                const endISO = new Date(sampai + "T23:59:59").toISOString();
+
+                let query = supabaseClient
+                    .from("sales")
+                    .select("id, no_struk, created_at, total_belanja, nominal_dibayar, metode_bayar, customers(nama, no_whatsapp), debts(status, sisa_hutang)")
+                    .gte("created_at", startISO)
+                    .lte("created_at", endISO)
+                    .order("created_at", { ascending: false });
+
+                if (metode !== "ALL") {
+                    query = query.eq("metode_bayar", metode);
+                }
+
+                const { data: sales, error } = await query;
+                if (error) throw error;
+
+                allTransactions = sales || [];
+                renderTable(allTransactions);
+                updateSummary(allTransactions);
+                updateTableInfo(dari, sampai);
+
+            } catch (err) {
+                console.error("Load transactions error:", err);
+                body.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-rose-500 font-semibold">Gagal memuat data: ${err.message}</td></tr>`;
+            }
+        }
+
+        // Render main transactions table
+        function renderTable(list) {
+            const body = document.getElementById("transaction-body");
+
+            if (!list || list.length === 0) {
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-16 text-slate-400 font-medium">
+                            Tidak ada transaksi ditemukan pada rentang tanggal ini 📭
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            body.innerHTML = list.map((s, idx) => {
+                const waktu = new Date(s.created_at).toLocaleString("id-ID", {
+                    day: '2-digit', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+                const pelanggan = s.customers ? s.customers.nama : '-';
+                const debtRecord = Array.isArray(s.debts) ? s.debts[0] : s.debts;
+                const debtLunas = debtRecord && (debtRecord.sisa_hutang === 0 || debtRecord.status === 'LUNAS');
+                const isLunas = parseFloat(s.nominal_dibayar || 0) >= parseFloat(s.total_belanja || 0) || debtLunas;
+                const statusBadge = isLunas
+                    ? `<span class="bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-bold">Lunas</span>`
+                    : `<span class="bg-rose-50 text-rose-700 text-xs px-2.5 py-1 rounded-full font-bold">Hutang</span>`;
+
+                const metodeBadge = getMetodeBadge(s.metode_bayar);
+
+                return `
+                    <tr class="hover:bg-slate-50/50 transition border-b border-slate-100">
+                        <td class="px-6 py-4 font-bold text-slate-700 font-mono text-xs">${s.no_struk || '-'}</td>
+                        <td class="px-6 py-4 text-slate-500">${waktu}</td>
+                        <td class="px-6 py-4 font-medium text-slate-700">${pelanggan}</td>
+                        <td class="px-6 py-4">${metodeBadge}</td>
+                        <td class="px-6 py-4 font-bold text-slate-800">${formatRupiah(s.total_belanja)}</td>
+                        <td class="px-6 py-4 font-semibold text-emerald-600">${formatRupiah(s.nominal_dibayar)}</td>
+                        <td class="px-6 py-4">${statusBadge}</td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="openDetailModal('${s.id}')"
+                                class="text-xs font-bold text-blue-600 hover:bg-blue-50 py-1.5 px-3 rounded-lg border border-blue-200 transition">
+                                Detail
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        // Get colored badge for payment method
+        function getMetodeBadge(metode) {
+            if (!metode) return '<span class="text-slate-400">-</span>';
+            const map = {
+                "Tunai": "bg-blue-50 text-blue-700",
+                "Nominal QRIS": "bg-violet-50 text-violet-700",
+                "Debit Card": "bg-amber-50 text-amber-700"
+            };
+            const cls = map[metode] || "bg-slate-100 text-slate-600";
+            const label = metode === "Nominal QRIS" ? "QRIS" : metode === "Debit Card" ? "Debit/Transfer" : metode;
+            return `<span class="${cls} text-xs px-2.5 py-1 rounded-full font-bold">${label}</span>`;
+        }
+
+        // Update summary cards
+        function updateSummary(list) {
+            const total = list.length;
+            const omzet = list.reduce((s, t) => s + parseFloat(t.total_belanja || 0), 0);
+            const rata = total > 0 ? omzet / total : 0;
+
+            document.getElementById("sum-transaksi").textContent = total.toLocaleString("id-ID");
+            document.getElementById("sum-omzet").textContent = formatRupiah(omzet);
+            document.getElementById("sum-rata").textContent = formatRupiah(rata);
+        }
+
+        // Update table info text
+        function updateTableInfo(dari, sampai) {
+            const d1 = new Date(dari).toLocaleDateString("id-ID", { day: '2-digit', month: 'long', year: 'numeric' });
+            const d2 = new Date(sampai).toLocaleDateString("id-ID", { day: '2-digit', month: 'long', year: 'numeric' });
+            document.getElementById("table-info").textContent = `Menampilkan data dari ${d1} hingga ${d2}`;
+        }
+
+        // Reset filters to current month
+        function resetFilter() {
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            document.getElementById("filter-dari").value = formatDate(firstDay);
+            document.getElementById("filter-sampai").value = formatDate(today);
+            document.getElementById("filter-metode").value = "ALL";
+            loadTransactions();
+        }
+
+        // Open detail modal & load sale items
+        async function openDetailModal(saleId) {
+            const modal = document.getElementById("detail-modal");
+            const card = document.getElementById("detail-modal-card");
+
+            modal.classList.remove("hidden");
+            setTimeout(() => card.classList.remove("scale-95", "opacity-0"), 10);
+
+            const sale = allTransactions.find(s => s.id === saleId);
+            if (!sale) return;
+
+            // Populate header info
+            document.getElementById("detail-no-struk").textContent = `No Struk: ${sale.no_struk || '-'}`;
+            document.getElementById("d-waktu").textContent = new Date(sale.created_at).toLocaleString("id-ID");
+            document.getElementById("d-metode").textContent = sale.metode_bayar || '-';
+            document.getElementById("d-total").textContent = formatRupiah(sale.total_belanja);
+            document.getElementById("d-bayar").textContent = formatRupiah(sale.nominal_dibayar);
+
+            // Load items detail
+            const itemsBody = document.getElementById("detail-items-body");
+            itemsBody.innerHTML = `<tr><td colspan="4" class="text-center p-6 text-slate-400">Memuat item...</td></tr>`;
+
+            try {
+                const { data: items, error } = await supabaseClient
+                    .from("sale_details")
+                    .select("qty_jual, subtotal, product_units(nama_satuan, products(nama_barang))")
+                    .eq("sale_id", saleId);
+
+                if (error) throw error;
+
+                if (!items || items.length === 0) {
+                    itemsBody.innerHTML = `<tr><td colspan="4" class="text-center p-6 text-slate-400">Tidak ada item detail tersedia.</td></tr>`;
+                    return;
+                }
+
+                itemsBody.innerHTML = items.map(item => `
+                    <tr class="hover:bg-slate-50 transition border-y">
+                        <td class="p-3 font-semibold text-slate-800">${item.product_units?.products?.nama_barang || '-'}</td>
+                        <td class="p-3 text-slate-500">${item.product_units?.nama_satuan || '-'}</td>
+                        <td class="p-3 text-slate-600">${item.qty_jual || 0}</td>
+                        <td class="p-3 font-bold text-slate-700 text-right">${formatRupiah(item.subtotal)}</td>
+                    </tr>
+                `).join("");
+
+            } catch (err) {
+                console.error("Load sale items error:", err);
+                itemsBody.innerHTML = `<tr><td colspan="4" class="text-center p-6 text-rose-400">Gagal memuat item: ${err.message}</td></tr>`;
+            }
+        }
+
+        function closeDetailModal() {
+            const modal = document.getElementById("detail-modal");
+            const card = document.getElementById("detail-modal-card");
+            card.classList.add("scale-95", "opacity-0");
+            setTimeout(() => modal.classList.add("hidden"), 300);
+        }
+
+        // Export visible transactions to Excel
+        function exportToExcel() {
+            if (allTransactions.length === 0) {
+                alert("Tidak ada data untuk diekspor! Tampilkan data terlebih dahulu.");
+                return;
+            }
+
+            const dari = document.getElementById("filter-dari").value;
+            const sampai = document.getElementById("filter-sampai").value;
+
+            // Build worksheet data
+            const wsData = [
+                ["Laporan Riwayat Transaksi Toko Arrahma"],
+                [`Periode: ${dari} s/d ${sampai}`],
+                [`Dicetak: ${new Date().toLocaleString("id-ID")}`],
+                [],
+                ["No", "No Struk", "Waktu Transaksi", "Pelanggan", "Metode Bayar", "Total Belanja", "Nominal Bayar", "Status"]
+            ];
+
+            allTransactions.forEach((s, idx) => {
+                const waktu = new Date(s.created_at).toLocaleString("id-ID");
+                const pelanggan = s.customers ? s.customers.nama : '-';
+                const debtRecord = Array.isArray(s.debts) ? s.debts[0] : s.debts;
+                const debtLunas = debtRecord && (debtRecord.sisa_hutang === 0 || debtRecord.status === 'LUNAS');
+                const isLunas = parseFloat(s.nominal_dibayar || 0) >= parseFloat(s.total_belanja || 0) || debtLunas;
+                const status = isLunas ? "Lunas" : "Hutang";
+
+                wsData.push([
+                    idx + 1,
+                    s.no_struk || '-',
+                    waktu,
+                    pelanggan,
+                    s.metode_bayar || '-',
+                    parseFloat(s.total_belanja || 0),
+                    parseFloat(s.nominal_dibayar || 0),
+                    status
+                ]);
+            });
+
+            // Summary row
+            const totalOmzet = allTransactions.reduce((s, t) => s + parseFloat(t.total_belanja || 0), 0);
+            wsData.push([]);
+            wsData.push(["", "", "", "", "TOTAL OMZET", totalOmzet, "", ""]);
+            wsData.push(["", "", "", "", "TOTAL TRANSAKSI", allTransactions.length, "", ""]);
+
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // Column widths
+            ws['!cols'] = [
+                { wch: 5 }, { wch: 22 }, { wch: 22 }, { wch: 20 },
+                { wch: 15 }, { wch: 18 }, { wch: 15 }, { wch: 10 }
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, "Riwayat Transaksi");
+
+            // Download file
+            const fileName = `Riwayat_Transaksi_${dari}_sd_${sampai}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+        }
+    </script>
+</body>
+
+</html>

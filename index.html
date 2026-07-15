@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Kasir Toko Arrahma</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="supabase.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #2563eb, #1e3a8a);
+        }
+
+        .glass {
+            backdrop-filter: blur(15px);
+            background: rgba(255, 255, 255, .95);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-5">
+
+    <div class="glass w-full max-w-md rounded-3xl shadow-2xl p-8">
+
+        <div class="text-center">
+
+            <img src="logo.png" class="w-24 h-24 mx-auto mb-5 object-contain">
+
+            <h1 class="text-3xl font-bold text-slate-800">
+                Toko Arrahma
+            </h1>
+
+            <p class="text-gray-500 mt-2">
+                Point Of Sale System
+            </p>
+
+        </div>
+
+        <div class="mt-8 space-y-5">
+
+            <div>
+
+                <label class="font-medium">
+                    Username
+                </label>
+
+                <input id="username" type="text" placeholder="Masukkan Username"
+                    class="mt-2 w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500">
+
+            </div>
+
+            <div>
+
+                <label class="font-medium">
+                    Password
+                </label>
+
+                <input id="password" type="password" placeholder="Masukkan Password"
+                    class="mt-2 w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500">
+
+            </div>
+
+            <button id="btnLogin"
+                class="w-full bg-blue-600 hover:bg-blue-700 duration-300 text-white rounded-xl py-3 font-semibold">
+
+                LOGIN
+
+            </button>
+
+            <div id="message" class="text-center text-red-600 font-medium">
+            </div>
+
+        </div>
+
+        <div class="mt-8 text-center text-gray-400 text-sm">
+
+            © 2026 Toko Arrahma POS
+
+        </div>
+
+    </div>
+
+    <script>
+
+        const SUPABASE_URL =
+            "https://sygkebaaugyoxniuywet.supabase.co";
+
+        const SUPABASE_KEY =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5Z2tlYmFhdWd5b3huaXV5d2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTg3MjMsImV4cCI6MjA5OTU5NDcyM30.hDuck7LodeXbIPjFrnO1KuFbQgcQFAXX0y-V1-XbmMQ";
+
+        const supabaseClient =
+            window.supabase.createClient(
+                SUPABASE_URL,
+                SUPABASE_KEY
+            );
+
+        document
+            .getElementById("btnLogin")
+            .onclick = login;
+
+        async function login() {
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const msg = document.getElementById("message");
+            msg.innerHTML = "";
+
+            if (username == "" || password == "") {
+                msg.innerHTML = "Username dan Password wajib diisi.";
+                return;
+            }
+
+            // Check if protocol is file://
+            if (window.location.protocol === 'file:') {
+                console.warn("Membuka POS melalui file:// dapat memicu pemblokiran CORS oleh browser.");
+            }
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from("users")
+                    .select("*")
+                    .eq("username", username)
+                    .eq("password", password)
+                    .maybeSingle();
+
+                if (error) {
+                    console.error("Supabase Login Error:", error);
+                    msg.innerHTML = `Login Gagal: ${error.message || 'Terjadi kesalahan.'}`;
+                    return;
+                }
+
+                if (!data) {
+                    msg.innerHTML = "Username atau Password salah.";
+                    return;
+                }
+
+                localStorage.setItem("user", JSON.stringify(data));
+                location.href = "dashboard.html";
+            } catch (err) {
+                console.error("Exception during login:", err);
+                msg.innerHTML = `Sistem Error: ${err.message}. ${window.location.protocol === 'file:' ? 'Coba jalankan dengan "node server.js" dan buka http://localhost:5000' : ''}`;
+            }
+        }
+
+        document.addEventListener("keypress", function (e) {
+            if (e.key === "Enter") {
+                login();
+            }
+        });
+
+        // Show protocol warning overlay if opened directly
+        window.addEventListener("DOMContentLoaded", () => {
+            if (window.location.protocol === 'file:') {
+                const warningBanner = document.createElement("div");
+                warningBanner.className = "fixed top-0 left-0 right-0 bg-yellow-500 text-slate-900 text-xs font-bold text-center py-2 z-50 shadow-md";
+                warningBanner.innerHTML = "⚠️ Anda membuka aplikasi langsung via file HTML. Jika login gagal/CORS error, mohon jalankan perantara server dengan perintah: <code class='bg-yellow-600 px-1.5 py-0.5 rounded'>node server.js</code> lalu buka <a href='http://localhost:5000' class='underline'>http://localhost:5000</a>";
+                document.body.prepend(warningBanner);
+            }
+        });
+
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hutang - Kasir Toko Arrahma</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .glass-card {
+            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex bg-slate-50">
+
+    <!-- Sidebar Navigation Container -->
+    <aside id="sidebar"
+        class="w-64 bg-white border-r h-screen sticky top-0 flex-shrink-0 z-30 transition-all duration-300"></aside>
+
+    <!-- Main Content Panel -->
+    <main class="flex-grow p-8 overflow-y-auto">
+
+        <!-- Header Section -->
+        <header class="mb-8">
+            <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Manajemen Hutang Pelanggan</h1>
+            <p class="text-sm text-slate-500 mt-1">Pantau sisa pelunasan hutang pelanggan, detail transaksi, cicilan,
+                dan data kontak.</p>
+        </header>
+
+        <!-- Search Table Filters panel -->
+        <section
+            class="glass-card rounded-2xl p-6 mb-8 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div class="relative w-full md:w-96">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </span>
+                <input id="debt-search" type="text" oninput="filterDebtors()"
+                    placeholder="Cari nama pelanggan atau No WA..."
+                    class="pl-10 w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
+            </div>
+
+            <div class="flex gap-3 w-full md:w-auto">
+                <select id="debt-status-filter" onchange="filterDebtors()"
+                    class="w-full md:w-48 bg-white border border-slate-200 rounded-xl py-2.5 px-3.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
+                    <option value="ALL">Semua Status</option>
+                    <option value="UNPAID" selected>Memiliki Hutang</option>
+                    <option value="PAID">Sudah Lunas</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Table Listing Debtors -->
+        <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-slate-400 text-xs font-semibold uppercase border-b bg-slate-50">
+                            <th class="px-6 py-4">Nama Pelanggan</th>
+                            <th class="px-6 py-4">Nomor WhatsApp</th>
+                            <th class="px-6 py-4">Total Hutang Awal</th>
+                            <th class="px-6 py-4">Sisa Hutang Aktif</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="debtor-list-body" class="divide-y text-slate-600 text-sm">
+                        <tr>
+                            <td colspan="6" class="text-center py-12 text-slate-400 font-medium">Memuat data hutang
+                                pelanggan...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Form: Edit Customer Details -->
+    <div id="customer-modal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-xl w-full max-w-md transform scale-95 opacity-0 transition-all duration-300"
+            id="customer-modal-card">
+
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-3xl">
+                <h3 class="text-lg font-bold text-slate-800">Ubah Data Pelanggan</h3>
+                <button onclick="closeCustomerModal()" class="text-slate-400 hover:text-slate-600 transition">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content Form -->
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="edit-cust-id">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase">Nama Lengkap</label>
+                    <input id="edit-cust-nama" type="text"
+                        class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/30 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase">Nomor WhatsApp</label>
+                    <input id="edit-cust-phone" type="text"
+                        class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/30 text-sm">
+                </div>
+            </div>
+
+            <!-- Modal Actions -->
+            <div class="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50 rounded-b-3xl">
+                <button onclick="closeCustomerModal()"
+                    class="border border-slate-200 text-slate-500 rounded-xl py-2.5 px-5 font-semibold text-sm hover:bg-slate-100 transition">
+                    Batal
+                </button>
+                <button onclick="saveCustomerDetails()" id="btn-save-customer"
+                    class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 px-6 font-semibold text-sm shadow-md transition">
+                    Simpan Perubahan
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal Form: Customer Debt Invoices Detail list -->
+    <div id="detail-modal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300"
+            id="detail-modal-card">
+
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-3xl">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Detail Hutang Piutang</h3>
+                    <p id="detail-modal-subtitle" class="text-xs text-slate-400 mt-1">Pelanggan: Budi</p>
+                </div>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 transition">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content List & Forms -->
+            <div class="p-6 space-y-6">
+                <!-- Payment Settle Section Form -->
+                <div class="bg-slate-50 rounded-2xl p-4 border border-slate-150 space-y-4">
+                    <h4 class="text-xs font-bold text-slate-600 uppercase">Input Angsuran / Pelunasan Hutang</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500">Pilih Struk Hutang</label>
+                            <select id="settle-debt-id"
+                                class="mt-1.5 w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500/30 font-semibold">
+                                <option value="">-- Pilih Struk --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500">Nominal Pembayaran</label>
+                            <input id="settle-nominal" type="number" placeholder="Contoh: 10000"
+                                class="mt-1.5 w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500/30 font-bold">
+                        </div>
+                        <div>
+                            <button onclick="submitSettlePayment()" id="btn-submit-settle"
+                                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2.5 font-bold text-xs shadow-md transition duration-300">
+                                Setor Pelunasan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Debts Invoices List Table -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-slate-500 uppercase">Catatan Struk Hutang</h4>
+                    <div class="border rounded-2xl overflow-hidden">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-50 border-b">
+                                    <th class="p-3 font-semibold text-slate-500">No Struk</th>
+                                    <th class="p-3 font-semibold text-slate-500">Tanggal Transaksi</th>
+                                    <th class="p-3 font-semibold text-slate-500">Hutang Awal</th>
+                                    <th class="p-3 font-semibold text-slate-500">Sisa Hutang</th>
+                                    <th class="p-3 font-semibold text-slate-500">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detail-list-body" class="divide-y text-slate-700 font-medium">
+                                <tr>
+                                    <td colspan="5" class="text-center p-6 text-slate-400">Loading data sub-hutang...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-6 border-t border-slate-100 flex justify-end bg-slate-50/50 rounded-b-3xl">
+                <button onclick="closeDetailModal()"
+                    class="py-2.5 px-6 bg-slate-800 text-white hover:bg-slate-900 rounded-xl font-semibold text-sm shadow-md transition duration-300">
+                    Selesai
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Shared JS Setup -->
+    <script src="shared.js"></script>
+    <script>
+        let allDebtors = [];
+        let activeCustomerName = "";
+        let activeCustomerId = "";
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Setup shared sidebar layouts
+            initLayout("hutang");
+
+            // Load debtor listing
+            await loadDebtorsData();
+        });
+
+        // Load customers and merge debt totals
+        async function loadDebtorsData() {
+            try {
+                // 1. Fetch all customers
+                const { data: custs, error: cErr } = await supabaseClient
+                    .from("customers")
+                    .select("*")
+                    .order("nama", { ascending: true });
+
+                if (cErr) throw cErr;
+
+                // 2. Fetch all debts
+                const { data: debtRecords, error: dErr } = await supabaseClient
+                    .from("debts")
+                    .select("id, total_hutang, sisa_hutang, status, created_at, sale_id, customer_id, sales(no_struk)");
+
+                if (dErr) throw dErr;
+
+                // Group debts by customer ID
+                allDebtors = (custs || []).map(c => {
+                    const matchedDebts = (debtRecords || []).filter(d => d.customer_id === c.id);
+
+                    let totalAwal = 0;
+                    let sisaAktif = 0;
+
+                    matchedDebts.forEach(d => {
+                        totalAwal += parseFloat(d.total_hutang || 0);
+                        sisaAktif += parseFloat(d.sisa_hutang || 0);
+                    });
+
+                    return {
+                        ...c,
+                        debts: matchedDebts,
+                        totalAwal: totalAwal,
+                        sisaAktif: sisaAktif
+                    };
+                });
+
+                filterDebtors();
+
+            } catch (err) {
+                console.error("Fetch debtors list failed:", err);
+            }
+        }
+
+        // Render main debtors table view
+        function renderTable(list) {
+            const body = document.getElementById("debtor-list-body");
+
+            if (list.length === 0) {
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-12 text-slate-400 font-medium">Tidak ada data pelanggan yang sesuai filter 😃</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            body.innerHTML = list.map(d => {
+                const statusBadge = d.sisaAktif > 0
+                    ? `<span class="bg-rose-50 text-rose-700 text-xs px-2.5 py-1 rounded-full font-bold">Belum Lunas</span>`
+                    : `<span class="bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-bold">Lunas</span>`;
+
+                return `
+                    <tr class="hover:bg-slate-50/50 transition border-b border-slate-100">
+                        <td class="px-6 py-5">
+                            <div class="font-bold text-slate-800 text-sm">${d.nama}</div>
+                        </td>
+                        <td class="px-6 py-5 font-medium text-slate-600">${d.no_whatsapp || '-'}</td>
+                        <td class="px-6 py-5 font-bold text-slate-700">${formatRupiah(d.totalAwal)}</td>
+                        <td class="px-6 py-5 font-extrabold ${d.sisaAktif > 0 ? 'text-rose-600' : 'text-emerald-600'}">${formatRupiah(d.sisaAktif)}</td>
+                        <td class="px-6 py-5">${statusBadge}</td>
+                        <td class="px-6 py-4 text-right font-medium">
+                            <div class="flex items-center justify-end gap-2.5">
+                                <button onclick="openDetailModal('${d.id}', '${d.nama.replace(/'/g, "\\'")}')" class="text-xs font-bold text-blue-600 hover:bg-blue-50 py-1.5 px-3 rounded-lg border border-blue-200 transition" title="Lihat Rekam Invoice">
+                                    Detail
+                                </button>
+                                <button onclick="openCustomerModal('${d.id}', '${d.nama.replace(/'/g, "\\'")}', '${d.no_whatsapp || ''}')" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg border hover:border-slate-300 transition" title="Ubah Profil">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                                <button onclick="deleteCustomer('${d.id}', '${d.nama.replace(/'/g, "\\'")}', ${d.sisaAktif})" class="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg border border-transparent hover:border-rose-100 hover:bg-rose-50 transition" title="Hapus Pelanggan">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        // Apply filters (search keyword + debt status select)
+        function filterDebtors() {
+            const query = document.getElementById("debt-search").value.toLowerCase().trim();
+            const status = document.getElementById("debt-status-filter").value;
+
+            let list = allDebtors;
+
+            if (status === "UNPAID") {
+                list = list.filter(d => d.sisaAktif > 0);
+            } else if (status === "PAID") {
+                list = list.filter(d => d.sisaAktif === 0);
+            }
+
+            if (query !== "") {
+                list = list.filter(d => {
+                    const matchName = d.nama.toLowerCase().includes(query);
+                    const matchPhone = (d.no_whatsapp || "").toLowerCase().includes(query);
+                    return matchName || matchPhone;
+                });
+            }
+
+            renderTable(list);
+        }
+
+        // Open/Close edit customer modal dialog
+        function openCustomerModal(id, name, phone) {
+            document.getElementById("edit-cust-id").value = id;
+            document.getElementById("edit-cust-nama").value = name;
+            document.getElementById("edit-cust-phone").value = phone;
+
+            const modal = document.getElementById("customer-modal");
+            const card = document.getElementById("customer-modal-card");
+
+            modal.classList.remove("hidden");
+            setTimeout(() => {
+                card.classList.remove("scale-95", "opacity-0");
+            }, 10);
+        }
+
+        function closeCustomerModal() {
+            const modal = document.getElementById("customer-modal");
+            const card = document.getElementById("customer-modal-card");
+            card.classList.add("scale-95", "opacity-0");
+            setTimeout(() => {
+                modal.classList.add("hidden");
+            }, 300);
+        }
+
+        // Update database info of Customer details
+        async function saveCustomerDetails() {
+            const id = document.getElementById("edit-cust-id").value;
+            const nama = document.getElementById("edit-cust-nama").value.trim();
+            const phone = document.getElementById("edit-cust-phone").value.trim();
+
+            if (!nama) {
+                alert("Nama Pelanggan wajib diisi!");
+                return;
+            }
+
+            const btn = document.getElementById("btn-save-customer");
+            btn.disabled = true;
+            btn.textContent = "Menyimpan...";
+
+            try {
+                const { error } = await supabaseClient
+                    .from("customers")
+                    .update({
+                        nama: nama,
+                        no_whatsapp: phone
+                    })
+                    .eq("id", id);
+
+                if (error) throw error;
+
+                alert("Data pelanggan berhasil diperbarui!");
+                closeCustomerModal();
+                await loadDebtorsData();
+
+            } catch (err) {
+                console.error("Save customer error:", err);
+                alert("Gagal merubah data pelanggan: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Simpan Perubahan";
+            }
+        }
+
+        // Deletecustomer constraints validations
+        async function deleteCustomer(id, name, outstandingBalance) {
+            // 1. Guard check: unpaid invoice block!
+            if (outstandingBalance > 0) {
+                alert(`Gagal menghapus! Pelanggan "${name}" masih terjerat hutang aktif sebesar ${formatRupiah(outstandingBalance)}. Lunasi hutang terlebih dahulu.`);
+                return;
+            }
+
+            if (!confirm(`Apakah Anda yakin ingin menghapus pelanggan "${name}"?\nSistem akan membersihkan seluruh riwayat pembayaran pelanggan.`)) {
+                return;
+            }
+
+            try {
+                // 2. Cascade safety logic for non-cascade sales references: Set customer_id of sales to NULL, then delete debts and customer
+                const { error: saleResetErr } = await supabaseClient
+                    .from("sales")
+                    .update({ customer_id: null })
+                    .eq("customer_id", id);
+
+                if (saleResetErr) throw saleResetErr;
+
+                // Delete customer paid debts
+                const { error: debtDelErr } = await supabaseClient
+                    .from("debts")
+                    .delete()
+                    .eq("customer_id", id);
+
+                if (debtDelErr) throw debtDelErr;
+
+                // Delete customer record finally
+                const { error: custDelErr } = await supabaseClient
+                    .from("customers")
+                    .delete()
+                    .eq("id", id);
+
+                if (custDelErr) throw custDelErr;
+
+                alert("Pelanggan berhasil dihapus dari sistem!");
+                await loadDebtorsData();
+
+            } catch (err) {
+                console.error("Error deleting customer ledger:", err);
+                alert("Gagal menghapus pelanggan: " + err.message);
+            }
+        }
+
+        // Detail ledger invoice list modular flows
+        async function openDetailModal(customerId, customerName) {
+            activeCustomerId = customerId;
+            activeCustomerName = customerName;
+            document.getElementById("detail-modal-subtitle").textContent = `Pelanggan: ${customerName}`;
+
+            // Clear inputs
+            document.getElementById("settle-nominal").value = "";
+
+            const modal = document.getElementById("detail-modal");
+            const card = document.getElementById("detail-modal-card");
+
+            modal.classList.remove("hidden");
+            setTimeout(() => {
+                card.classList.remove("scale-95", "opacity-0");
+            }, 10);
+
+            // Fetch detail records to view
+            await renderDebtsDetails(customerId);
+        }
+
+        async function renderDebtsDetails(customerId) {
+            const body = document.getElementById("detail-list-body");
+            const selectStruk = document.getElementById("settle-debt-id");
+
+            body.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-slate-400">Loading data sub-invoice...</td></tr>`;
+            selectStruk.innerHTML = `<option value="">-- Pilih Struk --</option>`;
+
+            // Look up cached customer debtor record details
+            const debtor = allDebtors.find(d => d.id === customerId);
+            if (!debtor || !debtor.debts || debtor.debts.length === 0) {
+                body.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-slate-400 font-medium">Pelanggan tidak memiliki riwayat struk hutang.</td></tr>`;
+                return;
+            }
+
+            const debtsList = debtor.debts;
+
+            // Render select choices of unpaid debts
+            const activeUnpaidDebts = debtsList.filter(d => d.status === "BELUM LUNAS");
+            selectStruk.innerHTML += activeUnpaidDebts.map(d => {
+                const strukLabel = d.sales ? d.sales.no_struk : `Struk ID:${d.id.substring(0, 8)}`;
+                return `<option value="${d.id}">${strukLabel} (Sisa: ${formatRupiah(d.sisa_hutang)})</option>`;
+            }).join("");
+
+            // Render table records
+            body.innerHTML = debtsList.map(d => {
+                const strukLabel = d.sales ? d.sales.no_struk : `Struk ID:${d.id.substring(0, 8)}`;
+                const createdDate = new Date(d.created_at).toLocaleString("id-ID");
+                const badge = d.status === "LUNAS"
+                    ? `<span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] uppercase font-bold">Lunas</span>`
+                    : `<span class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded text-[10px] uppercase font-bold">Belum Lunas</span>`;
+
+                return `
+                    <tr class="hover:bg-slate-50 transition border-y">
+                        <td class="p-3 font-semibold">${strukLabel}</td>
+                        <td class="p-3 text-slate-500">${createdDate}</td>
+                        <td class="p-3 text-slate-600 font-bold">${formatRupiah(d.total_hutang)}</td>
+                        <td class="p-3 font-extrabold ${d.sisa_hutang > 0 ? 'text-rose-600' : 'text-emerald-600'}">${formatRupiah(d.sisa_hutang)}</td>
+                        <td class="p-3">${badge}</td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        function closeDetailModal() {
+            const modal = document.getElementById("detail-modal");
+            const card = document.getElementById("detail-modal-card");
+            card.classList.add("scale-95", "opacity-0");
+            setTimeout(() => {
+                modal.classList.add("hidden");
+                // Reload main data debtor dashboard
+                loadDebtorsData();
+            }, 300);
+        }
+
+        // Settles outstanding debt cicilan values in database
+        async function submitSettlePayment() {
+            const debtId = document.getElementById("settle-debt-id").value;
+            const payVal = parseFloat(document.getElementById("settle-nominal").value) || 0;
+
+            if (!debtId || payVal <= 0) {
+                alert("Mohon pilih struk hutang dan masukkan nominal pembayaran valid!");
+                return;
+            }
+
+            // Retrieve selected debt details
+            const debtor = allDebtors.find(d => d.id === activeCustomerId);
+            const targetDebtObj = debtor.debts.find(d => d.id === debtId);
+
+            if (!targetDebtObj) return;
+
+            const remaining = parseFloat(targetDebtObj.sisa_hutang || 0);
+
+            if (payVal > remaining) {
+                alert(`Nominal pembayaran (${formatRupiah(payVal)}) melebihi sisa hutang struk ini (${formatRupiah(remaining)})!`);
+                return;
+            }
+
+            const newSisa = Math.max(0, remaining - payVal);
+            const nextStatus = newSisa <= 0 ? "LUNAS" : "BELUM LUNAS";
+
+            const btn = document.getElementById("btn-submit-settle");
+            btn.disabled = true;
+            btn.textContent = "Mengupdate...";
+
+            try {
+                // Update debts sisa & status record in database
+                const { data, error } = await supabaseClient
+                    .from("debts")
+                    .update({
+                        sisa_hutang: newSisa,
+                        status: nextStatus
+                    })
+                    .eq("id", debtId)
+                    .select();
+
+                if (error) throw error;
+
+                // Check if this payment makes the aggregate sales fully paid
+                // (Optional: we can leave sales status unchanged since our implementation plan tracks status programmatically).
+
+                alert("Settle pembayaran hutang telah disimpan!");
+
+                // Reload local modal details and backend cache
+                await loadDebtorsData();
+                await renderDebtsDetails(activeCustomerId);
+
+                // Reset settle input
+                document.getElementById("settle-nominal").value = "";
+
+            } catch (err) {
+                console.error("Debt settlement failed:", err);
+                alert("Gagal menyetor pelunasan hutang: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Setor Pelunasan";
+            }
+        }
+
+    </script>
+</body>
+
+</html>
