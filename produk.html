@@ -573,12 +573,29 @@
 
                 if (uErr) throw uErr;
 
-                // Merge units into products items
+                // Fetch latest purchase price per product
+                const { data: purchases, error: purchasesErr } = await supabaseClient
+                    .from("purchases")
+                    .select("product_id, harga_beli, tgl_belanja, created_at")
+                    .order("tgl_belanja", { ascending: false })
+                    .order("created_at", { ascending: false });
+
+                if (purchasesErr) throw purchasesErr;
+
+                const latestCostMap = {};
+                (purchases || []).forEach(purchase => {
+                    if (purchase.product_id && latestCostMap[purchase.product_id] == null) {
+                        latestCostMap[purchase.product_id] = purchase.harga_beli;
+                    }
+                });
+
+                // Merge units and last purchase cost into products items
                 allProducts = (prods || []).map(p => {
                     const relativeUnits = (units || []).filter(u => u.product_id === p.id);
                     return {
                         ...p,
-                        uRecords: relativeUnits
+                        uRecords: relativeUnits,
+                        last_harga_beli: latestCostMap[p.id] || null
                     };
                 });
 
@@ -719,13 +736,77 @@
                 filtered = filtered.filter(p => {
                     const matchName = p.nama_barang.toLowerCase().includes(pattern);
                     const matchCategory = (p.kategori || "").toLowerCase().includes(pattern);
-                    // Match any unit barcodes
                     const matchBarcode = p.uRecords.some(unit => (unit.barcode || "").toLowerCase().includes(pattern));
                     return matchName || matchCategory || matchBarcode;
                 });
             }
 
             renderTable(filtered);
+        }
+
+        // Export product list to Excel
+        function exportToExcel() {
+            const pattern = document.getElementById("search-input").value.toLowerCase().trim();
+            const cat = document.getElementById("category-filter").value;
+
+            let filteredProducts = allProducts;
+
+            if (cat !== "") {
+                filteredProducts = filteredProducts.filter(p => p.kategori === cat);
+            }
+
+            if (pattern !== "") {
+                filteredProducts = filteredProducts.filter(p => {
+                    const matchName = p.nama_barang.toLowerCase().includes(pattern);
+                    const matchCategory = (p.kategori || "").toLowerCase().includes(pattern);
+                    const matchBarcode = p.uRecords.some(unit => (unit.barcode || "").toLowerCase().includes(pattern));
+                    return matchName || matchCategory || matchBarcode;
+                });
+            }
+
+            if (!filteredProducts || filteredProducts.length === 0) {
+                alert("Tidak ada produk untuk diekspor. Pastikan data produk sudah dimuat atau hapus filter terlebih dahulu.");
+                return;
+            }
+
+            const wsData = [
+                ["Nama Produk", "Kategori", "Stok", "Satuan Dasar", "Harga Beli Terakhir", "Harga Jual Dasar", "Unit Konversi & Harga", "Barcode Dasar"]
+            ];
+
+            filteredProducts.forEach(product => {
+                const unitDescriptions = (product.uRecords || []).map(unit => {
+                    const qty = unit.qty_konversi || unit.konversi || 1;
+                    const harga = typeof formatRupiah === 'function' ? formatRupiah(unit.harga_jual) : (unit.harga_jual != null ? `Rp ${unit.harga_jual}` : "-");
+                    return `${unit.nama_satuan} x${qty} = ${harga}`;
+                }).join("\n");
+
+                const baseUnit = (product.uRecords || []).find(u => (u.qty_konversi || u.konversi) === 1);
+                const hargaJualDasar = baseUnit ? formatRupiah(baseUnit.harga_jual) : "-";
+                const hargaBeliTerakhir = product.last_harga_beli != null ? formatRupiah(product.last_harga_beli) : "-";
+
+                wsData.push([
+                    product.nama_barang || "-",
+                    product.kategori || "-",
+                    product.stok_dasar != null ? product.stok_dasar : 0,
+                    product.satuan_dasar || "-",
+                    hargaBeliTerakhir,
+                    hargaJualDasar,
+                    unitDescriptions || "-",
+                    baseUnit?.barcode || "-"
+                ]);
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, "Produk");
+
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = today.getFullYear();
+            const fileName = `Produk_Export_${day}${month}${year}.xlsx`;
+
+            XLSX.writeFile(wb, fileName);
         }
 
         // Product Modal visibility controllers

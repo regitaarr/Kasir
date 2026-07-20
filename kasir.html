@@ -39,11 +39,131 @@
                 position: absolute;
                 left: 0;
                 top: 0;
-                width: 100%;
+                width: 80mm;
+                max-width: 100%;
                 margin: 0;
                 padding: 10px;
                 font-family: 'Courier New', Courier, monospace;
+                color: #111827;
+                white-space: normal;
+                word-wrap: break-word;
             }
+        }
+
+        #receipt-print-area {
+            font-family: 'Courier New', Courier, monospace;
+            line-height: 1.4;
+        }
+
+        #receipt-print-area .receipt-header,
+        #receipt-print-area .receipt-footer {
+            text-align: center;
+        }
+
+        #receipt-print-area .receipt-logo {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #receipt-print-area .receipt-logo img {
+            width: 70px;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+
+        #receipt-print-area .receipt-logo-placeholder {
+            display: none;
+            font-size: 0.95rem;
+            font-weight: 900;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        #receipt-print-area .receipt-store-name {
+            font-size: 1rem;
+            font-weight: 900;
+            margin-bottom: 4px;
+        }
+
+        #receipt-print-area .receipt-store-subtitle {
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        #receipt-print-area .receipt-store-address,
+        #receipt-print-area .receipt-store-phone {
+            font-size: 0.68rem;
+            line-height: 1.5;
+            margin-bottom: 2px;
+        }
+
+        #receipt-print-area .receipt-section {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        #receipt-print-area .receipt-info-row,
+        #receipt-print-area .receipt-summary-row,
+        #receipt-print-area .receipt-item-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+        }
+
+        #receipt-print-area .receipt-info-row span:first-child,
+        #receipt-print-area .receipt-summary-row span:first-child,
+        #receipt-print-area .receipt-item-meta span:first-child {
+            text-align: left;
+        }
+
+        #receipt-print-area .receipt-info-row span:last-child,
+        #receipt-print-area .receipt-summary-row span:last-child,
+        #receipt-print-area .receipt-item-meta span:last-child {
+            text-align: right;
+        }
+
+        #receipt-print-area .receipt-divider {
+            border-top: 1px dashed #64748b;
+            margin: 10px 0;
+        }
+
+        #receipt-print-area .receipt-item {
+            margin-bottom: 8px;
+            font-size: 0.78rem;
+        }
+
+        #receipt-print-area .receipt-item-name {
+            font-weight: 700;
+            margin-bottom: 2px;
+            word-break: break-word;
+        }
+
+        #receipt-print-area .receipt-total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            font-weight: 900;
+            margin-top: 6px;
+        }
+
+        #receipt-print-area .receipt-footer .receipt-note {
+            font-size: 0.68rem;
+            margin: 8px 0 2px;
+            line-height: 1.4;
+        }
+
+        #receipt-print-area .receipt-footer .receipt-powered {
+            margin-top: 8px;
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
         }
     </style>
 </head>
@@ -903,60 +1023,84 @@
         // Renders visual structure of Receipt elements to screen
         async function renderReceiptMarkup(no_struk, payMethod, paid, isLunas, diff, customerId) {
             const user = checkAuth();
-            const timeStr = new Date().toLocaleString("id-ID");
+            const timeStr = new Date().toLocaleString("id-ID", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+            });
 
-            let customerName = "-";
+            let customerName = null;
             if (customerId) {
                 const checkCust = allCustomers.find(c => c.id === customerId);
-                customerName = checkCust ? checkCust.nama : "Baru";
+                customerName = checkCust ? checkCust.nama : "Customer Baru";
             }
 
-            // Generate rows
-            const itemRowsText = shoppingCart.map(item => {
-                const name = item.product.nama_barang.substring(0, 20).padEnd(20, " ");
-                const qtyText = `${item.qty} ${item.unit.nama_satuan}`.padEnd(10, " ");
-                const price = formatRupiah(item.unit.harga_jual).padStart(12, " ");
-                const sub = formatRupiah(item.qty * item.unit.harga_jual).padStart(12, " ");
-                return `${name}\n  ${qtyText} x ${price.trim()} = ${sub.trim()}`;
-            }).join("\n");
+            const logoSrc = "logo.png";
 
-            const changeText = isLunas
-                ? `Kembali   : ${formatRupiah(diff).padStart(15, " ")}`
-                : `Sisa Hutang: ${formatRupiah(Math.abs(diff)).padStart(14, " ")}`;
+            const itemRowsHtml = shoppingCart.map(item => {
+                const qtyLabel = `${item.qty} x ${formatRupiah(item.unit.harga_jual)}`;
+                const subtotalLabel = formatRupiah(item.qty * item.unit.harga_jual);
+                return `<div class="receipt-item">
+                    <div class="receipt-item-name">${item.product.nama_barang}</div>
+                    <div class="receipt-item-meta"><span>${qtyLabel}</span><span>${subtotalLabel}</span></div>
+                </div>`;
+            }).join("");
 
-            const customerSection = customerId
-                ? `Pelanggan : ${customerName}\n`
+            const customerInfoHtml = customerName
+                ? `<div class="receipt-info-row"><span>Nama Pelanggan</span><span>${customerName}</span></div>`
                 : "";
 
+            const balanceLabel = isLunas ? "Kembalian" : "Sisa Hutang";
+            const balanceValue = formatRupiah(Math.abs(diff));
+
             const html = `
-========================================
-           TOKO ARRAHMA
-      Jl. Raya Arrahma, No. 12
-========================================
-No Struk  : ${no_struk}
-Kasir     : ${user ? user.nama : 'Kasir'}
-Waktu     : ${timeStr}
-${customerSection}----------------------------------------
-Barang
-----------------------------------------
-${itemRowsText}
-----------------------------------------
-Total     : ${formatRupiah(finalCartTotal).padStart(15, " ")}
-Bayar     : ${formatRupiah(paid).padStart(15, " ")}
-Cara Bayar: ${payMethod}
-${changeText}
-========================================
-   Terima Kasih Atas Kunjungan Anda
-        Barang yang sudah dibeli
-      tidak dapat ditukar/dikembalikan
-========================================
-            * ARRAHMA POS *
-            `;
+<div class="receipt-header">
+    <div class="receipt-logo">
+        <img src="${logoSrc}" alt="Logo Toko Arrahma" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <div class="receipt-logo-placeholder">ARRAHMA</div>
+    </div>
+    <div class="receipt-store-name">TOKO ARRAHMA</div>
+    <div class="receipt-store-subtitle">Smart Choice Everyday</div>
+    <div class="receipt-store-address">Jl. Nambo - Gunung Cupu<br>Dusun Kubangpari, RT.02/RW.02<br>Bangunsari, Kec. Pamarican<br>Kabupaten Ciamis<br>Jawa Barat 46382</div>
+    <div class="receipt-store-phone">Telp / WA : 081461220151</div>
+</div>
+<div class="receipt-divider"></div>
+<div class="receipt-section receipt-info">
+    <div class="receipt-info-row"><span>No Struk</span><span>${no_struk}</span></div>
+    <div class="receipt-info-row"><span>Tanggal & Jam</span><span>${timeStr}</span></div>
+    <div class="receipt-info-row"><span>Nama Kasir</span><span>${user ? user.nama : 'Kasir'}</span></div>
+    ${customerInfoHtml}
+    <div class="receipt-info-row"><span>Metode Pembayaran</span><span>${payMethod}</span></div>
+</div>
+<div class="receipt-divider"></div>
+<div class="receipt-section receipt-items">
+    ${itemRowsHtml}
+</div>
+<div class="receipt-divider"></div>
+<div class="receipt-section receipt-summary">
+    <div class="receipt-summary-row"><span>Subtotal</span><span>${formatRupiah(finalCartTotal)}</span></div>
+    <div class="receipt-total-row"><span>Total Belanja</span><span>${formatRupiah(finalCartTotal)}</span></div>
+    <div class="receipt-summary-row"><span>Nominal Dibayar</span><span>${formatRupiah(paid)}</span></div>
+    <div class="receipt-summary-row"><span>${balanceLabel}</span><span>${balanceValue}</span></div>
+</div>
+<div class="receipt-divider"></div>
+<div class="receipt-footer">
+    <div>Terima Kasih Atas Kunjungan Anda ❤</div>
+    <div>Silakan berbelanja kembali di</div>
+    <div class="receipt-store-name">TOKO ARRAHMA</div>
+    <div>Smart Choice Everyday</div>
+    <div class="receipt-note">Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan.</div>
+    <div>Hubungi Kami</div>
+    <div>081461220151</div>
+    <div class="receipt-powered">Powered by Arrahma POS</div>
+</div>`;
 
-            // Write output to print markup DIV container
-            document.getElementById("receipt-print-area").textContent = html.trim();
+            const receiptArea = document.getElementById("receipt-print-area");
+            receiptArea.innerHTML = html.trim();
 
-            // Open view modal dialog
             openReceiptModal();
         }
 
