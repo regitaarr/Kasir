@@ -8,8 +8,8 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- QuaggaJS barcode scanner -->
-    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <!-- @ericblade/quagga2 barcode scanner (v1.x stable) -->
+    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1/dist/quagga.min.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -495,7 +495,8 @@
         }
 
         // Add Product to Cart list handler
-        function addProductToCartWithUnit(product, unit) {
+        // fromScanner=true → jangan tambah qty bila sudah ada di keranjang
+        function addProductToCartWithUnit(product, unit, fromScanner = false) {
             // Check stock availability
             if (product.stok_dasar <= 0) {
                 alert("Stok produk habis!");
@@ -506,7 +507,16 @@
             const existingId = shoppingCart.findIndex(item => item.product.id === product.id && item.unit.id === unit.id);
 
             if (existingId > -1) {
-                // Increment qty
+                if (fromScanner) {
+                    // Scanner TIDAK boleh menambah qty — tampilkan notif singkat
+                    const notif = document.createElement("div");
+                    notif.textContent = `"${product.nama_barang}" sudah di keranjang. Ubah qty secara manual.`;
+                    notif.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:9999;opacity:1;transition:opacity 0.5s";
+                    document.body.appendChild(notif);
+                    setTimeout(() => { notif.style.opacity = "0"; setTimeout(() => notif.remove(), 500); }, 2000);
+                    return;
+                }
+                // Increment qty (manual via tombol produk grid)
                 const potentialStock = shoppingCart[existingId].qty + 1;
                 const reqBasicStock = potentialStock * (unit.qty_konversi || unit.konversi || 1);
 
@@ -972,6 +982,10 @@ ${changeText}
 
         // Toggle webcam scanning container
         let _kasirScannerOn = false;
+        let _scanProcessing = false;      // Lock: hanya proses 1 scan dalam satu waktu
+        let _lastScannedCode = null;       // Kode terakhir yang berhasil diproses
+        let _lastScannedTime = 0;          // Timestamp deteksi terakhir
+        const SCAN_COOLDOWN_MS = 1500;     // Jeda minimum antara 2 scan (ms)
 
         function toggleWebcamScanner() {
             const container = document.getElementById("scanner-container");
@@ -981,14 +995,24 @@ ${changeText}
                 // Tutup scanner
                 container.classList.add("hidden");
                 if (_kasirScannerOn) {
+                    Quagga.offDetected();
                     Quagga.stop();
                     _kasirScannerOn = false;
+                    _scanProcessing = false;
+                    _lastScannedCode = null;
                 }
             } else {
-                // Buka scanner
+                // Buka scanner — reset state dulu
+                _scanProcessing = false;
+                _lastScannedCode = null;
+                _lastScannedTime = 0;
+
                 container.classList.remove("hidden");
                 const vp = document.getElementById("interactive-reader");
                 vp.innerHTML = "";
+
+                // Pastikan listener lama dibersihkan SEBELUM init
+                Quagga.offDetected();
 
                 Quagga.init({
                     inputStream: {
@@ -996,35 +1020,56 @@ ${changeText}
                         type: "LiveStream",
                         target: vp,
                         constraints: {
-                            width: { ideal: 640 },
-                            height: { ideal: 300 },
-                            facingMode: "environment"
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            facingMode: "environment",
+                            focusMode: "continuous"
                         }
                     },
+                    numOfWorkers: 0,
                     decoder: {
                         readers: [
                             "ean_reader", "ean_8_reader",
                             "code_128_reader", "code_39_reader",
                             "upc_reader", "upc_e_reader"
-                        ]
+                        ],
+                        multiple: false
                     },
                     locate: true
                 }, function (err) {
                     if (err) {
                         console.error("Quagga init error:", err);
-                        alert("Gagal membuka kamera: " + err.message);
+                        alert("Gagal membuka kamera: " + (err.message || err));
+                        container.classList.add("hidden");
                         return;
                     }
                     Quagga.start();
                     _kasirScannerOn = true;
                 });
 
-                Quagga.offDetected();
                 Quagga.onDetected(function (result) {
+                    // 1. Guard: lock sedang aktif?
+                    if (_scanProcessing) return;
+
+                    // 2. Confidence filter: tolak hasil dengan error terlalu tinggi
+                    const avgErr = result.codeResult.decodedCodes
+                        .filter(c => c.error !== undefined)
+                        .reduce((acc, c, _, arr) => acc + c.error / arr.length, 0);
+                    if (avgErr > 0.20) return;
+
                     const decodedText = result.codeResult.code;
                     if (!decodedText) return;
 
-                    // Cari produk berdasarkan barcode
+                    // 3. Cooldown: barcode sama dalam SCAN_COOLDOWN_MS? abaikan
+                    const now = Date.now();
+                    if (decodedText === _lastScannedCode && (now - _lastScannedTime) < SCAN_COOLDOWN_MS) return;
+
+                    // 4. Set lock dan simpan state
+                    _scanProcessing = true;
+                    _lastScannedCode = decodedText;
+                    _lastScannedTime = now;
+
+                    // 5. Cari produk berdasarkan barcode
                     let matchedUnit = null;
                     let matchedProduct = null;
 
@@ -1038,7 +1083,8 @@ ${changeText}
                     }
 
                     if (matchedProduct && matchedUnit) {
-                        addProductToCartWithUnit(matchedProduct, matchedUnit);
+                        // Panggil dengan flag fromScanner=true
+                        addProductToCartWithUnit(matchedProduct, matchedUnit, true);
 
                         // Beep feedback
                         try {
@@ -1056,6 +1102,9 @@ ${changeText}
                         document.getElementById("pos-search").value = decodedText;
                         searchProducts();
                     }
+
+                    // 6. Lepas lock setelah cooldown selesai
+                    setTimeout(() => { _scanProcessing = false; }, SCAN_COOLDOWN_MS);
                 });
             }
         }
