@@ -13,8 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- SheetJS for Excel export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- QuaggaJS2 barcode scanner (maintained fork, fixes modern browser issues) -->
-    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.7.4/dist/quagga.min.js"></script>
+    <!-- QuaggaJS barcode scanner -->
+    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -929,30 +929,28 @@
         // =====================
         let _scannerTargetId = null;
         let _scannerRunning = false;
+        let _detectionCounts = {};
+        const CONFIRMATION_THRESHOLD = 3; // Minimal 3x scan sama untuk konfirmasi
 
         function openBarcodeScanner(targetInputId) {
             _scannerTargetId = targetInputId;
+            _detectionCounts = {};
+            document.getElementById("scanner-result").textContent = "";
+            document.getElementById("scanner-status").textContent = "Menginisialisasi kamera...";
+            document.getElementById("scanner-modal").classList.remove("hidden");
 
-            const resultEl = document.getElementById("scanner-result");
-            const statusEl = document.getElementById("scanner-status");
-            const modalEl = document.getElementById("scanner-modal");
-            const vp = document.getElementById("scanner-viewport");
-
-            resultEl.textContent = "";
-            statusEl.textContent = "Menginisialisasi kamera...";
-            modalEl.classList.remove("hidden");
-
-            // Stop running scanner first (prevent double-init)
+            // Stop scanner jika masih berjalan
             if (_scannerRunning) {
-                try { Quagga.stop(); } catch (e) { }
+                Quagga.stop();
                 _scannerRunning = false;
             }
 
-            // Clear viewport
-            vp.innerHTML = "";
+            // Clear listener lama sebelum init baru
+            Quagga.offDetected();
 
-            // Remove any old listeners BEFORE init
-            try { Quagga.offDetected(); } catch (e) { }
+            // Clear viewport
+            const vp = document.getElementById("scanner-viewport");
+            vp.innerHTML = "";
 
             Quagga.init({
                 inputStream: {
@@ -960,68 +958,67 @@
                     type: "LiveStream",
                     target: vp,
                     constraints: {
-                        width: { min: 320, ideal: 640, max: 1280 },
-                        height: { min: 240, ideal: 480, max: 720 },
+                        width: { ideal: 640 },
+                        height: { ideal: 280 },
                         facingMode: "environment"
                     }
                 },
-                locator: {
-                    patchSize: "medium",
-                    halfSample: false
-                },
                 numOfWorkers: 0,
-                frequency: 10,
                 decoder: {
                     readers: [
-                        "ean_reader",
-                        "ean_8_reader",
-                        "code_128_reader",
-                        "code_39_reader",
-                        "upc_reader",
-                        "upc_e_reader"
-                    ],
-                    multiple: false
+                        "ean_reader", "ean_8_reader",
+                        "code_128_reader", "code_39_reader",
+                        "upc_reader", "upc_e_reader"
+                    ]
                 },
                 locate: true
             }, function (err) {
                 if (err) {
                     console.error("Quagga init error:", err);
-                    const msg = (typeof err === "string") ? err : (err.message || JSON.stringify(err));
-                    statusEl.textContent = "❌ Gagal membuka kamera: " + msg;
-                    statusEl.style.color = "#ef4444";
+                    document.getElementById("scanner-status").textContent = "Gagal membuka kamera: " + (err.message || err);
                     return;
                 }
                 Quagga.start();
                 _scannerRunning = true;
-                statusEl.textContent = "📷 Kamera aktif — arahkan ke barcode";
-                statusEl.style.color = "";
+                document.getElementById("scanner-status").textContent = "Kamera aktif — arahkan ke barcode";
             });
 
             Quagga.onDetected(function (result) {
-                const code = result && result.codeResult && result.codeResult.code;
+                const code = result.codeResult.code;
                 if (!code) return;
 
-                // Isi input target
+                // Hitung berapa kali barcode yang sama terdeteksi (anti-false-positive)
+                _detectionCounts[code] = (_detectionCounts[code] || 0) + 1;
+
+                if (_detectionCounts[code] < CONFIRMATION_THRESHOLD) {
+                    const remaining = CONFIRMATION_THRESHOLD - _detectionCounts[code];
+                    document.getElementById("scanner-status").textContent =
+                        "Mendeteksi... tahan kamera (" + _detectionCounts[code] + "/" + CONFIRMATION_THRESHOLD + ")";
+                    return;
+                }
+
+                // Barcode terkonfirmasi
                 const input = document.getElementById(_scannerTargetId);
                 if (input) {
                     input.value = code;
                     input.dispatchEvent(new Event("input"));
                 }
 
-                resultEl.textContent = "✅ Terdeteksi: " + code;
+                document.getElementById("scanner-result").textContent = "✅ Terdeteksi: " + code;
 
-                // Tutup scanner otomatis
-                setTimeout(() => closeBarcodeScanner(), 700);
+                // Auto close after short delay
+                setTimeout(() => closeBarcodeScanner(), 800);
             });
         }
 
         function closeBarcodeScanner() {
             document.getElementById("scanner-modal").classList.add("hidden");
             if (_scannerRunning) {
-                try { Quagga.stop(); } catch (e) { }
+                Quagga.stop();
                 _scannerRunning = false;
             }
-            try { Quagga.offDetected(); } catch (e) { }
+            Quagga.offDetected();
+            _detectionCounts = {};
         }
 
     </script>

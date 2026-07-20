@@ -8,8 +8,8 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- QuaggaJS2 barcode scanner (maintained fork, fixes modern browser issues) -->
-    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.7.4/dist/quagga.min.js"></script>
+    <!-- QuaggaJS barcode scanner -->
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -981,9 +981,8 @@ ${changeText}
                 // Tutup scanner
                 container.classList.add("hidden");
                 if (_kasirScannerOn) {
-                    try { Quagga.stop(); } catch (e) { }
+                    Quagga.stop();
                     _kasirScannerOn = false;
-                    try { Quagga.offDetected(); } catch (e) { }
                 }
             } else {
                 // Buka scanner
@@ -991,58 +990,38 @@ ${changeText}
                 const vp = document.getElementById("interactive-reader");
                 vp.innerHTML = "";
 
-                // Stop existing instance if any
-                if (_kasirScannerOn) {
-                    try { Quagga.stop(); } catch (e) { }
-                    _kasirScannerOn = false;
-                }
-
-                // Clear listeners BEFORE init
-                try { Quagga.offDetected(); } catch (e) { }
-
                 Quagga.init({
                     inputStream: {
                         name: "Live",
                         type: "LiveStream",
                         target: vp,
                         constraints: {
-                            width: { min: 320, ideal: 640, max: 1280 },
-                            height: { min: 240, ideal: 480, max: 720 },
+                            width: { ideal: 640 },
+                            height: { ideal: 300 },
                             facingMode: "environment"
                         }
                     },
-                    locator: {
-                        patchSize: "medium",
-                        halfSample: false
-                    },
-                    numOfWorkers: 0,
-                    frequency: 10,
                     decoder: {
                         readers: [
-                            "ean_reader",
-                            "ean_8_reader",
-                            "code_128_reader",
-                            "code_39_reader",
-                            "upc_reader",
-                            "upc_e_reader"
-                        ],
-                        multiple: false
+                            "ean_reader", "ean_8_reader",
+                            "code_128_reader", "code_39_reader",
+                            "upc_reader", "upc_e_reader"
+                        ]
                     },
                     locate: true
                 }, function (err) {
                     if (err) {
                         console.error("Quagga init error:", err);
-                        const msg = (typeof err === "string") ? err : (err.message || JSON.stringify(err));
-                        alert("❌ Gagal membuka kamera: " + msg);
-                        container.classList.add("hidden");
+                        alert("Gagal membuka kamera: " + err.message);
                         return;
                     }
                     Quagga.start();
                     _kasirScannerOn = true;
                 });
 
+                Quagga.offDetected();
                 Quagga.onDetected(function (result) {
-                    const decodedText = result && result.codeResult && result.codeResult.code;
+                    const decodedText = result.codeResult.code;
                     if (!decodedText) return;
 
                     // Cari produk berdasarkan barcode
