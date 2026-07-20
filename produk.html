@@ -14,7 +14,7 @@
     <!-- SheetJS for Excel export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- QuaggaJS barcode scanner -->
-    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -929,24 +929,12 @@
         // =====================
         let _scannerTargetId = null;
         let _scannerRunning = false;
-        let _detectionCounts = {};
-        const CONFIRMATION_THRESHOLD = 3; // Minimal 3x scan sama untuk konfirmasi
 
         function openBarcodeScanner(targetInputId) {
             _scannerTargetId = targetInputId;
-            _detectionCounts = {};
             document.getElementById("scanner-result").textContent = "";
             document.getElementById("scanner-status").textContent = "Menginisialisasi kamera...";
             document.getElementById("scanner-modal").classList.remove("hidden");
-
-            // Stop scanner jika masih berjalan
-            if (_scannerRunning) {
-                Quagga.stop();
-                _scannerRunning = false;
-            }
-
-            // Clear listener lama sebelum init baru
-            Quagga.offDetected();
 
             // Clear viewport
             const vp = document.getElementById("scanner-viewport");
@@ -963,7 +951,6 @@
                         facingMode: "environment"
                     }
                 },
-                numOfWorkers: 0,
                 decoder: {
                     readers: [
                         "ean_reader", "ean_8_reader",
@@ -974,8 +961,7 @@
                 locate: true
             }, function (err) {
                 if (err) {
-                    console.error("Quagga init error:", err);
-                    document.getElementById("scanner-status").textContent = "Gagal membuka kamera: " + (err.message || err);
+                    document.getElementById("scanner-status").textContent = "Gagal membuka kamera: " + err.message;
                     return;
                 }
                 Quagga.start();
@@ -983,21 +969,12 @@
                 document.getElementById("scanner-status").textContent = "Kamera aktif — arahkan ke barcode";
             });
 
+            Quagga.offDetected(); // clear old listeners
             Quagga.onDetected(function (result) {
                 const code = result.codeResult.code;
                 if (!code) return;
 
-                // Hitung berapa kali barcode yang sama terdeteksi (anti-false-positive)
-                _detectionCounts[code] = (_detectionCounts[code] || 0) + 1;
-
-                if (_detectionCounts[code] < CONFIRMATION_THRESHOLD) {
-                    const remaining = CONFIRMATION_THRESHOLD - _detectionCounts[code];
-                    document.getElementById("scanner-status").textContent =
-                        "Mendeteksi... tahan kamera (" + _detectionCounts[code] + "/" + CONFIRMATION_THRESHOLD + ")";
-                    return;
-                }
-
-                // Barcode terkonfirmasi
+                // Fill target input
                 const input = document.getElementById(_scannerTargetId);
                 if (input) {
                     input.value = code;
@@ -1017,8 +994,6 @@
                 Quagga.stop();
                 _scannerRunning = false;
             }
-            Quagga.offDetected();
-            _detectionCounts = {};
         }
 
     </script>
