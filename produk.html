@@ -98,18 +98,13 @@
                             <th class="px-6 py-4">Kategori</th>
                             <th class="px-6 py-4 text-center">Stok</th>
                             <th class="px-6 py-4">Satuan Dasar</th>
-                            <th class="px-6 py-4">Nama Supplier</th>
-                            <th class="px-6 py-4">Tgl Belanja</th>
-                            <th class="px-6 py-4 text-center">Jml Barang</th>
-                            <th class="px-6 py-4">Harga Beli</th>
-                            <th class="px-6 py-4">Total Harga</th>
-                            <th class="px-6 py-4 max-w-sm">Detail Konversi Unit (Satuan / Barcode / Harga)</th>
+                            <th class="px-6 py-4 max-w-sm">Konversi Unit (Satuan / Barcode / Harga)</th>
                             <th class="px-6 py-4 text-right">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="product-list-body" class="divide-y text-slate-600 text-sm">
                         <tr>
-                            <td colspan="11" class="text-center py-12 text-slate-400 font-medium">Memuat data produk...
+                            <td colspan="6" class="text-center py-12 text-slate-400 font-medium">Memuat data produk...
                             </td>
                         </tr>
                     </tbody>
@@ -149,15 +144,9 @@
                     <div>
                         <label class="block text-xs font-semibold text-slate-500 uppercase">Kategori</label>
                         <input id="form-kategori" type="text" list="kategori-list"
-                            placeholder="Contoh: Minuman, Makanan, Sabun"
+                            placeholder="Contoh: Minuman, Makanan"
                             class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm">
                         <datalist id="kategori-list"></datalist>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase">Stok Dasar</label>
-                        <input id="form-stok" type="number" placeholder="Contoh: 100"
-                            class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm">
                     </div>
 
                     <div>
@@ -166,44 +155,21 @@
                             class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm">
                     </div>
 
-                    <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-slate-500 uppercase">Nama Supplier</label>
-                        <input id="form-supplier" type="text" placeholder="Contoh: PT. Sumber Makmur"
-                            class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase">Tgl Belanja</label>
-                        <input id="form-tgl-belanja" type="date"
-                            class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase">Jumlah Barang</label>
-                        <input id="form-jumlah-barang" type="number" placeholder="Contoh: 50" min="0"
-                            oninput="hitungTotal()"
-                            class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase">Harga Beli (Rp) <span
-                                class="text-blue-400 normal-case font-normal">(otomatis)</span></label>
-                        <input id="form-harga-beli" type="number" placeholder="Otomatis dari Total ÷ Jumlah" readonly
-                            class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none bg-slate-50 text-slate-500 text-sm cursor-not-allowed">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase">Total Harga (Rp)</label>
-                        <input id="form-total-harga" type="number" placeholder="Contoh: 450000" min="0"
-                            oninput="hitungTotal()"
-                            class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm">
-                    </div>
-
                     <div id="base-price-container">
                         <label class="block text-xs font-semibold text-slate-500 uppercase">Harga Jual Dasar
                             (Rp)</label>
                         <input id="form-harga-dasar" type="number" placeholder="Contoh: 3000"
                             class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm">
+                    </div>
+
+                    <!-- Hanya tampil saat mode EDIT: koreksi stok manual -->
+                    <div id="stok-edit-container" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase">Koreksi Stok Manual
+                            <span class="text-amber-500 normal-case font-normal">(opname)</span></label>
+                        <input id="form-stok" type="number" placeholder="Masukkan stok hasil opname"
+                            class="mt-2 w-full border border-amber-200 bg-amber-50 rounded-xl p-3 outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 text-sm">
+                        <p class="mt-1 text-xs text-amber-600">⚠️ Nilai ini langsung menggantikan stok saat ini. Gunakan
+                            untuk koreksi/opname saja.</p>
                     </div>
 
                     <div id="base-barcode-container" class="col-span-2">
@@ -344,6 +310,113 @@
                 </button>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Modal: Pembelian Supplier -->
+    <div id="purchase-modal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300"
+            id="purchase-modal-card">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-orange-50/70 rounded-t-3xl">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">🛒 Input Pembelian Supplier</h3>
+                    <p id="purchase-modal-subtitle" class="text-xs text-slate-400 mt-1">Produk: -</p>
+                </div>
+                <button onclick="closePurchaseModal()" class="text-slate-400 hover:text-slate-600 transition">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="purchase-product-id">
+                <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700">
+                    ℹ️ Stok akan <strong>bertambah</strong> sebesar jumlah yang dibeli. Riwayat disimpan sebagai
+                    transaksi baru.
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase">Nama Supplier</label>
+                        <input id="p-supplier" type="text" placeholder="Contoh: PT. Sumber Makmur"
+                            class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase">Tanggal Belanja</label>
+                        <input id="p-tgl" type="date"
+                            class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase">Jumlah Beli</label>
+                        <input id="p-jumlah" type="number" min="1" placeholder="Contoh: 50" oninput="hitungHargaBeli()"
+                            class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase">Total Harga (Rp)</label>
+                        <input id="p-total" type="number" min="0" placeholder="Contoh: 450000"
+                            oninput="hitungHargaBeli()"
+                            class="mt-2 w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase">Harga Beli/pcs <span
+                                class="text-blue-400 normal-case font-normal">(otomatis)</span></label>
+                        <input id="p-harga-beli" type="number" readonly placeholder="Otomatis"
+                            class="mt-2 w-full border border-slate-200 rounded-xl p-3 bg-slate-50 text-slate-500 text-sm cursor-not-allowed">
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50 rounded-b-3xl">
+                <button onclick="closePurchaseModal()"
+                    class="border border-slate-200 text-slate-500 rounded-xl py-2.5 px-5 font-semibold text-sm hover:bg-slate-100 transition">Batal</button>
+                <button onclick="savePurchase()" id="btn-save-purchase"
+                    class="bg-orange-500 hover:bg-orange-600 text-white rounded-xl py-2.5 px-6 font-semibold text-sm shadow-md transition">
+                    Simpan &amp; Tambah Stok
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Riwayat Pembelian -->
+    <div id="purchase-history-modal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300"
+            id="purchase-history-card">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-3xl">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Riwayat Pembelian</h3>
+                    <p id="ph-subtitle" class="text-xs text-slate-400 mt-1">Produk: -</p>
+                </div>
+                <button onclick="closePurchaseHistoryModal()" class="text-slate-400 hover:text-slate-600 transition">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="border rounded-2xl overflow-hidden">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 border-b">
+                                <th class="p-3 font-semibold text-slate-500">Tanggal</th>
+                                <th class="p-3 font-semibold text-slate-500">Supplier</th>
+                                <th class="p-3 font-semibold text-slate-500 text-center">Jumlah</th>
+                                <th class="p-3 font-semibold text-slate-500">Harga Beli</th>
+                                <th class="p-3 font-semibold text-slate-500">Total</th>
+                                <th class="p-3 font-semibold text-slate-500 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ph-list-body" class="divide-y">
+                            <tr>
+                                <td colspan="6" class="text-center p-6 text-slate-400">Memuat...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-100 flex justify-end bg-slate-50/50 rounded-b-3xl">
+                <button onclick="closePurchaseHistoryModal()"
+                    class="py-2.5 px-6 bg-slate-800 text-white hover:bg-slate-900 rounded-xl font-semibold text-sm shadow-md transition">Tutup</button>
+            </div>
         </div>
     </div>
 
@@ -528,7 +601,7 @@
             if (productsList.length === 0) {
                 body.innerHTML = `
                     <tr>
-                        <td colspan="11" class="text-center py-12 text-slate-400 font-medium">Belum ada barang di database. Klik tombol "Tambah Produk"!</td>
+                        <td colspan="6" class="text-center py-12 text-slate-400 font-medium">Belum ada barang di database. Klik tombol "Tambah Produk"!</td>
                     </tr>
                 `;
                 return;
@@ -550,7 +623,7 @@
                     unitListPills = `<span class="text-xs text-rose-500 italic">Belum diatur</span>`;
                 }
 
-                const totalHarga = (parseFloat(p.harga_beli) || 0) * (parseInt(p.jumlah_barang) || 0);
+                const stokClass = (p.stok_dasar || 0) < 10 ? 'text-rose-600' : 'text-slate-700';
                 return `
                     <tr class="hover:bg-slate-50/50 transition border-b border-slate-100">
                         <td class="px-6 py-5">
@@ -561,14 +634,10 @@
                             <span class="bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider">${p.kategori || 'Uncategorized'}</span>
                         </td>
                         <td class="px-6 py-5 text-center">
-                            <span class="font-extrabold text-sm ${p.stok_dasar < 10 ? 'text-rose-600' : 'text-slate-700'}">${p.stok_dasar}</span>
+                            <span class="font-extrabold text-sm ${stokClass}">${p.stok_dasar ?? 0}</span>
+                            <div class="text-[10px] text-slate-400">${p.satuan_dasar || ''}</div>
                         </td>
                         <td class="px-6 py-5 font-semibold">${p.satuan_dasar || '-'}</td>
-                        <td class="px-6 py-5 text-slate-700">${p.nama_supplier || '-'}</td>
-                        <td class="px-6 py-5 text-slate-600">${p.tgl_belanja ? new Date(p.tgl_belanja).toLocaleDateString('id-ID') : '-'}</td>
-                        <td class="px-6 py-5 text-center font-semibold">${p.jumlah_barang ?? '-'}</td>
-                        <td class="px-6 py-5 text-blue-700 font-semibold">${p.harga_beli ? formatRupiah(p.harga_beli) : '-'}</td>
-                        <td class="px-6 py-5 font-bold text-emerald-700">${totalHarga ? formatRupiah(totalHarga) : '-'}</td>
                         <td class="px-6 py-5 max-w-sm">
                             <div class="flex flex-wrap max-h-32 overflow-y-auto">
                                 ${unitListPills}
@@ -576,6 +645,12 @@
                         </td>
                         <td class="px-6 py-5 text-right font-medium">
                             <div class="flex items-center justify-end gap-2">
+                                <button onclick="openPurchaseModal('${p.id}', '${p.nama_barang.replace(/'/g, "\\'")}')" class="text-xs font-bold text-orange-600 hover:bg-orange-50 py-1.5 px-3 rounded-lg border border-orange-200 transition" title="Input Pembelian dari Supplier">
+                                    🛒 Beli
+                                </button>
+                                <button onclick="openPurchaseHistoryModal('${p.id}', '${p.nama_barang.replace(/'/g, "\\'")}')" class="text-xs font-bold text-violet-600 hover:bg-violet-50 py-1.5 px-3 rounded-lg border border-violet-200 transition" title="Riwayat Pembelian">
+                                    Riwayat
+                                </button>
                                 <button onclick="openUnitModal('${p.id}', '${p.nama_barang.replace(/'/g, "\\'")}')" class="text-xs font-bold text-blue-600 hover:bg-blue-50 py-1.5 px-3 rounded-lg border border-blue-200 transition" title="Kelola Satuan & Barcode">
                                     Units
                                 </button>
@@ -659,10 +734,7 @@
             const card = document.getElementById("product-modal-card");
             const title = document.getElementById("modal-title");
             const idInput = document.getElementById("form-product-id");
-
-            // Subcontainers
-            const priceContainer = document.getElementById("base-price-container");
-            const barcodeContainer = document.getElementById("base-barcode-container");
+            const stokContainer = document.getElementById("stok-edit-container");
 
             modal.classList.remove("hidden");
             setTimeout(() => {
@@ -675,23 +747,17 @@
             document.getElementById("form-kategori").value = "";
             document.getElementById("form-stok").value = "";
             document.getElementById("form-satuan-dasar").value = "";
-            document.getElementById("form-supplier").value = "";
-            document.getElementById("form-tgl-belanja").value = "";
-            document.getElementById("form-jumlah-barang").value = "";
-            document.getElementById("form-harga-beli").value = "";
-            document.getElementById("form-total-harga").value = "";
             document.getElementById("form-harga-dasar").value = "";
             document.getElementById("form-barcode-dasar").value = "";
 
             if (mode === "add") {
                 title.textContent = "Tambah Produk Baru";
-                priceContainer.classList.remove("hidden");
-                barcodeContainer.classList.remove("hidden");
+                // Sembunyikan koreksi stok saat tambah baru (stok awal = 0)
+                stokContainer.classList.add("hidden");
             } else {
                 title.textContent = "Ubah Detail Produk";
-                // Tampilkan container harga dan barcode saat edit
-                priceContainer.classList.remove("hidden");
-                barcodeContainer.classList.remove("hidden");
+                // Tampilkan koreksi stok saat edit
+                stokContainer.classList.remove("hidden");
 
                 // Fetch product details
                 const p = allProducts.find(item => item.id === id);
@@ -699,13 +765,8 @@
                     idInput.value = p.id;
                     document.getElementById("form-nama").value = p.nama_barang;
                     document.getElementById("form-kategori").value = p.kategori || "";
-                    document.getElementById("form-stok").value = p.stok_dasar || 0;
+                    document.getElementById("form-stok").value = p.stok_dasar ?? 0;
                     document.getElementById("form-satuan-dasar").value = p.satuan_dasar || "";
-                    document.getElementById("form-supplier").value = p.nama_supplier || "";
-                    document.getElementById("form-tgl-belanja").value = p.tgl_belanja || "";
-                    document.getElementById("form-jumlah-barang").value = p.jumlah_barang ?? "";
-                    document.getElementById("form-harga-beli").value = p.harga_beli || "";
-                    document.getElementById("form-total-harga").value = p.total_harga || "";
 
                     // Isi barcode dan harga jual dari unit dasar (qty_konversi = 1)
                     const baseUnit = (p.uRecords || []).find(u => (u.qty_konversi || u.konversi) === 1);
@@ -744,23 +805,19 @@
                 return;
             }
 
-            const supplier = document.getElementById("form-supplier").value.trim();
-            const tglBelanja = document.getElementById("form-tgl-belanja").value;
-            const jumlahBarang = parseInt(document.getElementById("form-jumlah-barang").value) || 0;
-            const hargaBeli = parseFloat(document.getElementById("form-harga-beli").value) || 0;
-            const totalHarga = jumlahBarang * hargaBeli;
-
             const pData = {
                 nama_barang: nama,
                 kategori: kategori,
-                stok_dasar: stok,
-                satuan_dasar: satuan,
-                nama_supplier: supplier || null,
-                tgl_belanja: tglBelanja || null,
-                jumlah_barang: jumlahBarang || null,
-                harga_beli: hargaBeli || null,
-                total_harga: totalHarga || null
+                satuan_dasar: satuan
             };
+
+            // Jika mode edit, stok diambil dari form (koreksi manual/opname)
+            // Jika mode tambah baru, stok awal = 0 (akan ditambah via Pembelian Supplier)
+            if (id) {
+                pData.stok_dasar = stok;
+            } else {
+                pData.stok_dasar = 0;
+            }
 
             const btn = document.getElementById("btn-save-product");
             btn.disabled = true;
@@ -858,10 +915,211 @@
                 alert("Produk berhasil dihapus!");
                 await loadProducts();
             } catch (err) {
-                console.error("Delete error:", err);
+                console.error("Delete product error:", err);
                 alert("Gagal menghapus produk: " + err.message);
             }
         }
+
+        // =====================
+        // PEMBELIAN SUPPLIER
+        // =====================
+
+        // Hitung harga beli per pcs otomatis
+        function hitungHargaBeli() {
+            const jumlah = parseFloat(document.getElementById("p-jumlah").value) || 0;
+            const total = parseFloat(document.getElementById("p-total").value) || 0;
+            const hargaBeli = jumlah > 0 ? total / jumlah : 0;
+            document.getElementById("p-harga-beli").value = hargaBeli > 0 ? Math.round(hargaBeli) : "";
+        }
+
+        function openPurchaseModal(productId, productName) {
+            document.getElementById("purchase-product-id").value = productId;
+            document.getElementById("purchase-modal-subtitle").textContent = "Produk: " + productName;
+            document.getElementById("p-supplier").value = "";
+            document.getElementById("p-tgl").value = new Date().toISOString().split("T")[0];
+            document.getElementById("p-jumlah").value = "";
+            document.getElementById("p-total").value = "";
+            document.getElementById("p-harga-beli").value = "";
+
+            const modal = document.getElementById("purchase-modal");
+            const card = document.getElementById("purchase-modal-card");
+            modal.classList.remove("hidden");
+            setTimeout(() => card.classList.remove("scale-95", "opacity-0"), 10);
+        }
+
+        function closePurchaseModal() {
+            const card = document.getElementById("purchase-modal-card");
+            card.classList.add("scale-95", "opacity-0");
+            setTimeout(() => document.getElementById("purchase-modal").classList.add("hidden"), 300);
+        }
+
+        async function savePurchase() {
+            const productId = document.getElementById("purchase-product-id").value;
+            const supplier = document.getElementById("p-supplier").value.trim();
+            const tgl = document.getElementById("p-tgl").value;
+            const jumlah = parseInt(document.getElementById("p-jumlah").value);
+            const total = parseFloat(document.getElementById("p-total").value) || 0;
+            const hargaBeli = jumlah > 0 ? total / jumlah : 0;
+
+            if (!jumlah || jumlah <= 0) {
+                alert("Jumlah beli harus diisi dan lebih dari 0!");
+                return;
+            }
+
+            const btn = document.getElementById("btn-save-purchase");
+            btn.disabled = true;
+            btn.textContent = "Menyimpan...";
+
+            try {
+                // 1. Ambil stok saat ini
+                const { data: prodData, error: fetchErr } = await supabaseClient
+                    .from("products")
+                    .select("stok_dasar")
+                    .eq("id", productId)
+                    .single();
+
+                if (fetchErr) throw fetchErr;
+
+                const stokLama = parseInt(prodData.stok_dasar) || 0;
+                const stokBaru = stokLama + jumlah;
+
+                // 2. Update stok produk (stok_baru = stok_lama + jumlah_beli)
+                const { error: updateErr } = await supabaseClient
+                    .from("products")
+                    .update({ stok_dasar: stokBaru })
+                    .eq("id", productId);
+
+                if (updateErr) throw updateErr;
+
+                // 3. Simpan riwayat pembelian
+                const { error: purchaseErr } = await supabaseClient
+                    .from("purchases")
+                    .insert([{
+                        product_id: productId,
+                        nama_supplier: supplier || null,
+                        jumlah_beli: jumlah,
+                        harga_beli: hargaBeli > 0 ? Math.round(hargaBeli) : null,
+                        total_harga: total > 0 ? total : null,
+                        tgl_belanja: tgl || null
+                    }]);
+
+                if (purchaseErr) throw purchaseErr;
+
+                closePurchaseModal();
+                alert(`✅ Berhasil! Stok bertambah ${jumlah}. Stok sekarang: ${stokBaru}`);
+                await loadProducts();
+
+            } catch (err) {
+                console.error("Simpan pembelian error:", err);
+                alert("Gagal menyimpan pembelian: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Simpan & Tambah Stok";
+            }
+        }
+
+        let _activePurchaseProductId = null;
+
+        async function openPurchaseHistoryModal(productId, productName) {
+            _activePurchaseProductId = productId;
+            document.getElementById("ph-subtitle").textContent = "Produk: " + productName;
+
+            const modal = document.getElementById("purchase-history-modal");
+            const card = document.getElementById("purchase-history-card");
+            modal.classList.remove("hidden");
+            setTimeout(() => card.classList.remove("scale-95", "opacity-0"), 10);
+
+            await loadPurchaseHistory(productId);
+        }
+
+        async function loadPurchaseHistory(productId) {
+            const body = document.getElementById("ph-list-body");
+            body.innerHTML = `<tr><td colspan="6" class="text-center p-6 text-slate-400">Memuat...</td></tr>`;
+
+            try {
+                const { data: purchases, error } = await supabaseClient
+                    .from("purchases")
+                    .select("*")
+                    .eq("product_id", productId)
+                    .order("created_at", { ascending: false });
+
+                if (error) throw error;
+
+                if (!purchases || purchases.length === 0) {
+                    body.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-400">Belum ada riwayat pembelian untuk produk ini.</td></tr>`;
+                    return;
+                }
+
+                body.innerHTML = purchases.map(p => {
+                    const tgl = p.tgl_belanja
+                        ? new Date(p.tgl_belanja).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })
+                        : new Date(p.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+                    return `
+                        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                            <td class="p-3 text-slate-600">${tgl}</td>
+                            <td class="p-3 text-slate-700 font-medium">${p.nama_supplier || '-'}</td>
+                            <td class="p-3 text-center font-bold text-slate-800">${p.jumlah_beli}</td>
+                            <td class="p-3 text-blue-700">${p.harga_beli ? formatRupiah(p.harga_beli) : '-'}</td>
+                            <td class="p-3 font-semibold text-emerald-700">${p.total_harga ? formatRupiah(p.total_harga) : '-'}</td>
+                            <td class="p-3 text-right">
+                                <button onclick="deletePurchase('${p.id}', ${p.jumlah_beli})" class="text-xs font-bold text-rose-500 hover:bg-rose-50 py-1 px-2.5 rounded-lg border border-rose-200 transition">Hapus</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join("");
+
+            } catch (err) {
+                console.error("load purchase history error:", err);
+                body.innerHTML = `<tr><td colspan="6" class="text-center p-6 text-rose-500">Gagal memuat: ${err.message}</td></tr>`;
+            }
+        }
+
+        function closePurchaseHistoryModal() {
+            const card = document.getElementById("purchase-history-card");
+            card.classList.add("scale-95", "opacity-0");
+            setTimeout(() => document.getElementById("purchase-history-modal").classList.add("hidden"), 300);
+        }
+
+        async function deletePurchase(purchaseId, jumlahBeli) {
+            if (!confirm(`Hapus riwayat pembelian ini?\nStok produk akan dikurangi kembali sebesar ${jumlahBeli}.`)) return;
+
+            try {
+                // 1. Ambil stok saat ini
+                const { data: prodData, error: fetchErr } = await supabaseClient
+                    .from("products")
+                    .select("stok_dasar")
+                    .eq("id", _activePurchaseProductId)
+                    .single();
+
+                if (fetchErr) throw fetchErr;
+
+                const stokBaru = Math.max(0, (parseInt(prodData.stok_dasar) || 0) - jumlahBeli);
+
+                // 2. Kurangi stok
+                const { error: updateErr } = await supabaseClient
+                    .from("products")
+                    .update({ stok_dasar: stokBaru })
+                    .eq("id", _activePurchaseProductId);
+
+                if (updateErr) throw updateErr;
+
+                // 3. Hapus record pembelian
+                const { error: delErr } = await supabaseClient
+                    .from("purchases")
+                    .delete()
+                    .eq("id", purchaseId);
+
+                if (delErr) throw delErr;
+
+                await loadPurchaseHistory(_activePurchaseProductId);
+                await loadProducts();
+
+            } catch (err) {
+                console.error("Delete purchase error:", err);
+                alert("Gagal menghapus pembelian: " + err.message);
+            }
+        }
+
 
         // Multi-unit configuration controllers
         let activeUnitProductId = "";
