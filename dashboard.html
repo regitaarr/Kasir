@@ -60,7 +60,7 @@
         </header>
 
         <!-- Stats Grid Dashboard -->
-        <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
+        <section class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-6 mb-6 md:mb-8">
 
             <!-- Omzet Hari Ini Card -->
             <div
@@ -127,6 +127,24 @@
                     <span class="text-xs text-slate-500 font-semibold block uppercase tracking-wider">Kategori
                         Terlaris</span>
                     <h3 id="stat-kategori" class="text-xl font-bold text-slate-800 mt-1">-</h3>
+                </div>
+            </div>
+
+            <!-- Keuntungan Hari Ini Card -->
+            <div
+                class="glass-card rounded-2xl p-4 md:p-6 shadow-sm flex items-center gap-3 md:gap-5 hover:shadow-md transition duration-300 col-span-2 lg:col-span-3 xl:col-span-1">
+                <div
+                    class="bg-gradient-to-tr from-rose-100 to-pink-50 text-rose-600 p-3 md:p-4 rounded-xl flex-shrink-0">
+                    <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-semibold block uppercase tracking-wider">Keuntungan
+                        Hari Ini</span>
+                    <h3 id="stat-keuntungan" class="text-xl font-bold text-slate-800 mt-1">
+                        <span class="text-sm font-medium text-slate-400">Menghitung...</span>
+                    </h3>
                 </div>
             </div>
 
@@ -309,6 +327,70 @@
             }, 1000);
         }
 
+        // Hitung keuntungan bersih hari ini dari sale_details
+        async function loadProfitToday() {
+            const el = document.getElementById("stat-keuntungan");
+            try {
+                const startOfDay = new Date();
+                startOfDay.setHours(0, 0, 0, 0);
+                const endOfDay = new Date();
+                endOfDay.setHours(23, 59, 59, 999);
+
+                // Ambil sale_details hari ini beserta harga_jual, qty, dan product_id
+                const { data: details, error: detErr } = await supabaseClient
+                    .from("sale_details")
+                    .select("qty_jual, harga_jual, product_units(product_id), sales!inner(created_at)")
+                    .gte("sales.created_at", startOfDay.toISOString())
+                    .lte("sales.created_at", endOfDay.toISOString());
+
+                if (detErr) throw detErr;
+
+                if (!details || details.length === 0) {
+                    el.textContent = formatRupiah(0);
+                    return;
+                }
+
+                // Kumpulkan semua unique product_id yang terlibat hari ini
+                const productIds = [...new Set(
+                    details.map(d => d.product_units?.product_id).filter(Boolean)
+                )];
+
+                // Ambil harga beli terbaru per product dari tabel purchases
+                const { data: purchases, error: purErr } = await supabaseClient
+                    .from("purchases")
+                    .select("product_id, harga_beli, tgl_belanja, created_at")
+                    .in("product_id", productIds)
+                    .order("tgl_belanja", { ascending: false })
+                    .order("created_at", { ascending: false });
+
+                if (purErr) throw purErr;
+
+                // Buat map: product_id → harga_beli terakhir
+                const costMap = {};
+                (purchases || []).forEach(p => {
+                    if (p.product_id && costMap[p.product_id] == null) {
+                        costMap[p.product_id] = parseFloat(p.harga_beli) || 0;
+                    }
+                });
+
+                // Hitung total keuntungan: Σ (harga_jual - harga_beli) × qty_jual
+                let totalProfit = 0;
+                details.forEach(d => {
+                    const productId = d.product_units?.product_id;
+                    const hargaJual = parseFloat(d.harga_jual) || 0;
+                    const hargaBeli = productId ? (costMap[productId] || 0) : 0;
+                    const qty = parseInt(d.qty_jual) || 0;
+                    totalProfit += (hargaJual - hargaBeli) * qty;
+                });
+
+                el.textContent = formatRupiah(Math.max(0, totalProfit));
+
+            } catch (err) {
+                console.error("Profit calculation error:", err);
+                el.textContent = "Rp 0";
+            }
+        }
+
         // Fetch metrics from live Supabase DB
         async function loadDashboardMetrics() {
             try {
@@ -451,6 +533,9 @@
                         </tr>
                     `).join("");
                 }
+
+                // 5. Hitung keuntungan hari ini
+                await loadProfitToday();
 
             } catch (err) {
                 console.error("Dashboard error:", err);
