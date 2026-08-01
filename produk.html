@@ -981,17 +981,53 @@
 
         // Delete Product definition
         async function deleteProduct(id, name) {
-            if (!confirm(`Apakah Anda yakin ingin menghapus produk "${name}"?\nSistem akan secara permanen menghapus produk beserta seluruh konversi satuannya!`)) {
+            if (!confirm(`Apakah Anda yakin ingin menghapus produk "${name}"?\nSistem akan secara permanen menghapus produk beserta seluruh data penjualan dan konversi satuannya!`)) {
                 return;
             }
 
             try {
-                const { error } = await supabaseClient
+                // 1. Ambil semua unit id milik produk ini
+                const { data: units, error: unitsErr } = await supabaseClient
+                    .from("product_units")
+                    .select("id")
+                    .eq("product_id", id);
+
+                if (unitsErr) throw unitsErr;
+
+                // 2. Hapus sale_details yang mereferensikan unit-unit produk ini
+                if (units && units.length > 0) {
+                    const unitIds = units.map(u => u.id);
+                    const { error: sdErr } = await supabaseClient
+                        .from("sale_details")
+                        .delete()
+                        .in("product_unit_id", unitIds);
+
+                    if (sdErr) throw sdErr;
+                }
+
+                // 3. Hapus riwayat pembelian produk ini
+                const { error: purchaseErr } = await supabaseClient
+                    .from("purchases")
+                    .delete()
+                    .eq("product_id", id);
+
+                if (purchaseErr) throw purchaseErr;
+
+                // 4. Hapus product_units
+                const { error: puErr } = await supabaseClient
+                    .from("product_units")
+                    .delete()
+                    .eq("product_id", id);
+
+                if (puErr) throw puErr;
+
+                // 5. Hapus produk
+                const { error: prodErr } = await supabaseClient
                     .from("products")
                     .delete()
                     .eq("id", id);
 
-                if (error) throw error;
+                if (prodErr) throw prodErr;
 
                 alert("Produk berhasil dihapus!");
                 await loadProducts();
