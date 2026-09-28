@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Produk - Kasir Toko Arrahma</title>
+    <title>Produk - BayARRA!:</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS -->
@@ -179,7 +179,7 @@
                             <span class="text-amber-500 normal-case font-normal">(opname)</span></label>
                         <input id="form-stok" type="number" placeholder="Masukkan stok hasil opname"
                             class="mt-2 w-full border border-amber-200 bg-amber-50 rounded-xl p-3 outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 text-sm">
-                        <p class="mt-1 text-xs text-amber-600">⚠️ Nilai ini langsung menggantikan stok saat ini. Gunakan
+                        <p class="mt-1 text-xs text-amber-600">?? Nilai ini langsung menggantikan stok saat ini. Gunakan
                             untuk koreksi/opname saja.</p>
                     </div>
 
@@ -331,7 +331,7 @@
             id="purchase-modal-card">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-orange-50/70 rounded-t-3xl">
                 <div>
-                    <h3 class="text-lg font-bold text-slate-800">🛒 Input Pembelian Supplier</h3>
+                    <h3 class="text-lg font-bold text-slate-800">?? Input Pembelian Supplier</h3>
                     <p id="purchase-modal-subtitle" class="text-xs text-slate-400 mt-1">Produk: -</p>
                 </div>
                 <button onclick="closePurchaseModal()" class="text-slate-400 hover:text-slate-600 transition">
@@ -343,7 +343,7 @@
             <div class="p-6 space-y-4">
                 <input type="hidden" id="purchase-product-id">
                 <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700">
-                    ℹ️ Stok akan <strong>bertambah</strong> sebesar jumlah yang dibeli. Riwayat disimpan sebagai
+                    ?? Stok akan <strong>bertambah</strong> sebesar jumlah yang dibeli. Riwayat disimpan sebagai
                     transaksi baru.
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -674,7 +674,7 @@
                         <td class="px-6 py-5 text-right font-medium">
                             <div class="flex items-center justify-end gap-2">
                                 <button onclick="openPurchaseModal('${p.id}', '${p.nama_barang.replace(/'/g, "\\'")}')" class="text-xs font-bold text-orange-600 hover:bg-orange-50 py-1.5 px-3 rounded-lg border border-orange-200 transition" title="Input Pembelian dari Supplier">
-                                    🛒 Beli
+                                    ?? Beli
                                 </button>
                                 <button onclick="openPurchaseHistoryModal('${p.id}', '${p.nama_barang.replace(/'/g, "\\'")}')" class="text-xs font-bold text-violet-600 hover:bg-violet-50 py-1.5 px-3 rounded-lg border border-violet-200 transition" title="Riwayat Pembelian">
                                     Riwayat
@@ -1134,7 +1134,7 @@
                 if (purchaseErr) throw purchaseErr;
 
                 closePurchaseModal();
-                alert(`✅ Berhasil! Stok bertambah ${jumlah}. Stok sekarang: ${stokBaru}`);
+                alert(`? Berhasil! Stok bertambah ${jumlah}. Stok sekarang: ${stokBaru}`);
                 await loadProducts();
 
             } catch (err) {
@@ -1481,7 +1481,7 @@
                 Quagga.start();
                 _scannerRunning = true;
                 document.getElementById("scanner-status").textContent =
-                    "📷 Arahkan barcode ke dalam kotak merah";
+                    "?? Arahkan barcode ke dalam kotak merah";
             });
 
             Quagga.onDetected(function (result) {
@@ -1515,7 +1515,7 @@
                 if (navigator.vibrate) navigator.vibrate(80);
                 const scanBox = document.getElementById("scan-box");
                 if (scanBox) scanBox.classList.add("scan-box-success");
-                document.getElementById("scanner-result").textContent = "✅ " + code;
+                document.getElementById("scanner-result").textContent = "? " + code;
                 document.getElementById("scanner-status").textContent = "Barcode berhasil dibaca!";
 
                 // Auto close

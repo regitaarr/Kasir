@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Kasir Toko Arrahma</title>
+    <title>Dashboard - BayARRA!:</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS -->
@@ -365,7 +365,7 @@
 
                 if (purErr) throw purErr;
 
-                // Buat map: product_id → harga_beli terakhir
+                // Buat map: product_id ? harga_beli terakhir
                 const costMap = {};
                 (purchases || []).forEach(p => {
                     if (p.product_id && costMap[p.product_id] == null) {
@@ -373,7 +373,7 @@
                     }
                 });
 
-                // Hitung total keuntungan: Σ (harga_jual - harga_beli) × qty_jual
+                // Hitung total keuntungan: S (harga_jual - harga_beli) � qty_jual
                 let totalProfit = 0;
                 details.forEach(d => {
                     const productId = d.product_units?.product_id;
@@ -514,7 +514,7 @@
                 if (!lowStockProds || lowStockProds.length === 0) {
                     bodyEl.innerHTML = `
                         <tr>
-                            <td colspan="5" class="text-center py-12 text-slate-400 font-medium">Semua stok produk mencukupi ðŸ‘</td>
+                            <td colspan="5" class="text-center py-12 text-slate-400 font-medium">Semua stok produk mencukupi 👍</td>
                         </tr>
                     `;
                     countBadgeEl.textContent = "0 Barang";
