@@ -165,6 +165,55 @@
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
+
+        /* Scanner Modal Styles */
+        #kasir-scanner-viewport video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            display: block;
+        }
+
+        #kasir-scanner-viewport canvas {
+            display: none !important;
+        }
+
+        @keyframes kasirScanLine {
+            0% {
+                top: 8px;
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+
+            100% {
+                top: calc(100% - 8px);
+                opacity: 1;
+            }
+        }
+
+        .kasir-scan-line {
+            animation: kasirScanLine 2s linear infinite;
+        }
+
+        @keyframes kasirScanSuccess {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55), 0 0 0 2px #22c55e;
+            }
+
+            50% {
+                box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55), 0 0 0 4px #4ade80, 0 0 20px 4px rgba(34, 197, 94, 0.6);
+            }
+        }
+
+        .kasir-scan-box-success {
+            animation: kasirScanSuccess 0.5s ease-in-out 2;
+            border-color: #22c55e !important;
+        }
     </style>
 </head>
 
@@ -186,8 +235,8 @@
                     transaksi.</p>
             </div>
             <div class="flex items-center gap-3">
-                <button onclick="toggleWebcamScanner()"
-                    class="bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-105 duration-200 text-xs py-2 px-3.5 rounded-xl font-bold flex items-center gap-2">
+                <button onclick="openKasirScanner()"
+                    class="bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 duration-200 text-xs py-2 px-3.5 rounded-xl font-bold flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -198,15 +247,66 @@
             </div>
         </header>
 
-        <!-- Scanning Webcam Area -->
-        <section id="scanner-container" class="glass-card rounded-2xl p-4 shadow-sm hidden">
-            <div class="flex justify-between items-center mb-2">
-                <h3 class="text-xs font-bold text-slate-700 uppercase">Camera Barcode Scanner</h3>
-                <button onclick="toggleWebcamScanner()"
-                    class="text-rose-500 hover:text-rose-700 text-xs font-bold">Tutup X</button>
+        <!-- Scanner Barcode Modal (Dark Theme - matching Produk page) -->
+        <div id="kasir-scanner-modal"
+            class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center hidden"
+            style="background:rgba(2,6,23,0.85); backdrop-filter:blur(6px);">
+            <div
+                class="bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-700">
+
+                <!-- Header -->
+                <div class="px-5 pt-5 pb-3 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-white text-base">Scan Barcode</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Posisikan barcode dalam kotak merah</p>
+                    </div>
+                    <button onclick="closeKasirScanner()"
+                        class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300 transition">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Camera Area -->
+                <div class="relative bg-black mx-4 rounded-2xl overflow-hidden" style="height:260px;">
+                    <!-- Video live stream -->
+                    <div id="kasir-scanner-viewport" style="width:100%;height:100%;position:absolute;inset:0;"></div>
+
+                    <!-- Scan Box -->
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div id="kasir-scan-box" style="
+                            width: 230px;
+                            height: 110px;
+                            position: relative;
+                            box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+                            border-radius: 8px;
+                        ">
+                            <!-- Corner brackets -->
+                            <span
+                                style="position:absolute;top:-2px;left:-2px;width:20px;height:20px;border-top:3px solid #ef4444;border-left:3px solid #ef4444;border-radius:4px 0 0 0;"></span>
+                            <span
+                                style="position:absolute;top:-2px;right:-2px;width:20px;height:20px;border-top:3px solid #ef4444;border-right:3px solid #ef4444;border-radius:0 4px 0 0;"></span>
+                            <span
+                                style="position:absolute;bottom:-2px;left:-2px;width:20px;height:20px;border-bottom:3px solid #ef4444;border-left:3px solid #ef4444;border-radius:0 0 0 4px;"></span>
+                            <span
+                                style="position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-bottom:3px solid #ef4444;border-right:3px solid #ef4444;border-radius:0 0 4px 0;"></span>
+                            <!-- Scan line animation -->
+                            <div class="kasir-scan-line"
+                                style="position:absolute;left:4px;right:4px;height:2px;background:linear-gradient(90deg,transparent,#f87171,#ef4444,#f87171,transparent);border-radius:99px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status bar -->
+                <div class="px-5 py-4 text-center">
+                    <p id="kasir-scanner-status" class="text-xs text-slate-400">Menginisialisasi kamera...</p>
+                    <p id="kasir-scanner-result" class="text-sm font-bold text-emerald-400 mt-1 min-h-[20px]"></p>
+                </div>
+
             </div>
-            <div id="interactive-reader" class="mx-auto w-full max-w-[400px] border rounded-xl overflow-hidden"></div>
-        </section>
+        </div>
 
         <!-- POS Workspace (Grid Split Layout) -->
         <section class="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
@@ -1124,133 +1224,173 @@
             }, 300);
         }
 
-        // Toggle webcam scanning container
+        // =====================
+        // BARCODE SCANNER (Dark Modal - matching Produk page)
+        // =====================
         let _kasirScannerOn = false;
-        let _scanProcessing = false;      // Lock: hanya proses 1 scan dalam satu waktu
-        let _lastScannedCode = null;       // Kode terakhir yang berhasil diproses
-        let _lastScannedTime = 0;          // Timestamp deteksi terakhir
-        const SCAN_COOLDOWN_MS = 1500;     // Jeda minimum antara 2 scan (ms)
+        let _scanProcessing = false;
+        let _lastScannedCode = null;
+        let _lastScannedTime = 0;
+        const SCAN_COOLDOWN_MS = 1500;
+        let _kasirBeepCtx = null;
 
-        function toggleWebcamScanner() {
-            const container = document.getElementById("scanner-container");
-            const visible = !container.classList.contains("hidden");
+        function playKasirBeep() {
+            try {
+                if (!_kasirBeepCtx) _kasirBeepCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = _kasirBeepCtx.createOscillator();
+                const gain = _kasirBeepCtx.createGain();
+                osc.connect(gain);
+                gain.connect(_kasirBeepCtx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1760, _kasirBeepCtx.currentTime);
+                gain.gain.setValueAtTime(0.3, _kasirBeepCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, _kasirBeepCtx.currentTime + 0.18);
+                osc.start(_kasirBeepCtx.currentTime);
+                osc.stop(_kasirBeepCtx.currentTime + 0.18);
+            } catch (e) { /* silent fail */ }
+        }
 
-            if (visible) {
-                // Tutup scanner
-                container.classList.add("hidden");
-                if (_kasirScannerOn) {
-                    Quagga.offDetected();
-                    Quagga.stop();
-                    _kasirScannerOn = false;
-                    _scanProcessing = false;
-                    _lastScannedCode = null;
-                }
-            } else {
-                // Buka scanner — reset state dulu
-                _scanProcessing = false;
-                _lastScannedCode = null;
-                _lastScannedTime = 0;
+        function openKasirScanner() {
+            _scanProcessing = false;
+            _lastScannedCode = null;
+            _lastScannedTime = 0;
 
-                container.classList.remove("hidden");
-                const vp = document.getElementById("interactive-reader");
-                vp.innerHTML = "";
+            document.getElementById("kasir-scanner-result").textContent = "";
+            document.getElementById("kasir-scanner-status").textContent = "Menginisialisasi kamera...";
+            document.getElementById("kasir-scanner-modal").classList.remove("hidden");
+            const scanBox = document.getElementById("kasir-scan-box");
+            if (scanBox) scanBox.classList.remove("kasir-scan-box-success");
 
-                // Pastikan listener lama dibersihkan SEBELUM init
-                Quagga.offDetected();
-
-                Quagga.init({
-                    inputStream: {
-                        name: "Live",
-                        type: "LiveStream",
-                        target: vp,
-                        constraints: {
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 },
-                            facingMode: "environment",
-                            focusMode: "continuous"
-                        }
-                    },
-                    numOfWorkers: 0,
-                    decoder: {
-                        readers: [
-                            "ean_reader", "ean_8_reader",
-                            "code_128_reader", "code_39_reader",
-                            "upc_reader", "upc_e_reader"
-                        ],
-                        multiple: false
-                    },
-                    locate: true
-                }, function (err) {
-                    if (err) {
-                        console.error("Quagga init error:", err);
-                        alert("Gagal membuka kamera: " + (err.message || err));
-                        container.classList.add("hidden");
-                        return;
-                    }
-                    Quagga.start();
-                    _kasirScannerOn = true;
-                });
-
-                Quagga.onDetected(function (result) {
-                    // 1. Guard: lock sedang aktif?
-                    if (_scanProcessing) return;
-
-                    // 2. Confidence filter: tolak hasil dengan error terlalu tinggi
-                    const avgErr = result.codeResult.decodedCodes
-                        .filter(c => c.error !== undefined)
-                        .reduce((acc, c, _, arr) => acc + c.error / arr.length, 0);
-                    if (avgErr > 0.20) return;
-
-                    const decodedText = result.codeResult.code;
-                    if (!decodedText) return;
-
-                    // 3. Cooldown: barcode sama dalam SCAN_COOLDOWN_MS? abaikan
-                    const now = Date.now();
-                    if (decodedText === _lastScannedCode && (now - _lastScannedTime) < SCAN_COOLDOWN_MS) return;
-
-                    // 4. Set lock dan simpan state
-                    _scanProcessing = true;
-                    _lastScannedCode = decodedText;
-                    _lastScannedTime = now;
-
-                    // 5. Cari produk berdasarkan barcode
-                    let matchedUnit = null;
-                    let matchedProduct = null;
-
-                    for (const p of allProducts) {
-                        const findUnit = p.uRecords.find(u => u.barcode === decodedText);
-                        if (findUnit) {
-                            matchedUnit = findUnit;
-                            matchedProduct = p;
-                            break;
-                        }
-                    }
-
-                    if (matchedProduct && matchedUnit) {
-                        // Panggil dengan flag fromScanner=true
-                        addProductToCartWithUnit(matchedProduct, matchedUnit, true);
-
-                        // Beep feedback
-                        try {
-                            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                            const osc = audioCtx.createOscillator();
-                            osc.type = "sine";
-                            osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
-                            osc.connect(audioCtx.destination);
-                            osc.start();
-                            osc.stop(audioCtx.currentTime + 0.12);
-                        } catch (e) { }
-
-                    } else {
-                        // Barcode tidak terdaftar — isi ke search box saja
-                        document.getElementById("pos-search").value = decodedText;
-                        searchProducts();
-                    }
-
-                    // 6. Lepas lock setelah cooldown selesai
-                    setTimeout(() => { _scanProcessing = false; }, SCAN_COOLDOWN_MS);
-                });
+            // Stop jika masih berjalan
+            if (_kasirScannerOn) {
+                Quagga.stop();
+                _kasirScannerOn = false;
             }
+
+            // Bersihkan listener lama
+            Quagga.offDetected();
+
+            // Clear viewport
+            const vp = document.getElementById("kasir-scanner-viewport");
+            vp.innerHTML = "";
+
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: vp,
+                    constraints: {
+                        width: { min: 640, ideal: 1280 },
+                        height: { min: 260, ideal: 720 },
+                        facingMode: "environment",
+                        focusMode: "continuous",
+                        advanced: [{ zoom: 1 }]
+                    }
+                },
+                numOfWorkers: 0,
+                locate: true,
+                decoder: {
+                    readers: [
+                        "ean_reader", "ean_8_reader",
+                        "code_128_reader", "code_39_reader",
+                        "upc_reader", "upc_e_reader"
+                    ],
+                    multiple: false
+                },
+                locator: {
+                    halfSample: true,
+                    patchSize: "medium"
+                }
+            }, function (err) {
+                if (err) {
+                    console.error("Quagga init error:", err);
+                    document.getElementById("kasir-scanner-status").textContent =
+                        "Gagal membuka kamera: " + (err.message || err);
+                    return;
+                }
+                Quagga.start();
+                _kasirScannerOn = true;
+                document.getElementById("kasir-scanner-status").textContent =
+                    "📷 Arahkan barcode ke dalam kotak merah";
+            });
+
+            Quagga.onDetected(function (result) {
+                // 1. Guard: lock sedang aktif?
+                if (_scanProcessing) return;
+
+                // 2. Confidence filter
+                const cr = result.codeResult;
+                if (!cr || !cr.code) return;
+                const errors = cr.decodedCodes
+                    .filter(c => c.error !== undefined)
+                    .map(c => c.error);
+                if (errors.length > 0) {
+                    const avgErr = errors.reduce((a, b) => a + b, 0) / errors.length;
+                    if (avgErr > 0.22) return;
+                }
+
+                const decodedText = cr.code;
+
+                // 3. Cooldown: barcode sama dalam SCAN_COOLDOWN_MS? abaikan
+                const now = Date.now();
+                if (decodedText === _lastScannedCode && (now - _lastScannedTime) < SCAN_COOLDOWN_MS) return;
+
+                // 4. Set lock dan simpan state
+                _scanProcessing = true;
+                _lastScannedCode = decodedText;
+                _lastScannedTime = now;
+
+                // 5. Cari produk berdasarkan barcode
+                let matchedUnit = null;
+                let matchedProduct = null;
+
+                for (const p of allProducts) {
+                    const findUnit = p.uRecords.find(u => u.barcode === decodedText);
+                    if (findUnit) {
+                        matchedUnit = findUnit;
+                        matchedProduct = p;
+                        break;
+                    }
+                }
+
+                // Feedback visual sukses
+                playKasirBeep();
+                if (navigator.vibrate) navigator.vibrate(80);
+                const scanBox = document.getElementById("kasir-scan-box");
+                if (scanBox) scanBox.classList.add("kasir-scan-box-success");
+
+                if (matchedProduct && matchedUnit) {
+                    // Tambah ke keranjang
+                    addProductToCartWithUnit(matchedProduct, matchedUnit, true);
+                    document.getElementById("kasir-scanner-result").textContent = "✅ " + decodedText;
+                    document.getElementById("kasir-scanner-status").textContent =
+                        "Berhasil! " + matchedProduct.nama_barang;
+                } else {
+                    // Barcode tidak terdaftar — isi ke search box
+                    document.getElementById("pos-search").value = decodedText;
+                    searchProducts();
+                    document.getElementById("kasir-scanner-result").textContent = "⚠️ " + decodedText;
+                    document.getElementById("kasir-scanner-status").textContent =
+                        "Barcode tidak terdaftar, ditampilkan di pencarian";
+                }
+
+                // Auto close setelah 700ms
+                setTimeout(() => closeKasirScanner(), 700);
+
+                // Lepas lock setelah cooldown
+                setTimeout(() => { _scanProcessing = false; }, SCAN_COOLDOWN_MS);
+            });
+        }
+
+        function closeKasirScanner() {
+            document.getElementById("kasir-scanner-modal").classList.add("hidden");
+            if (_kasirScannerOn) {
+                Quagga.stop();
+                _kasirScannerOn = false;
+            }
+            Quagga.offDetected();
+            _lastScannedCode = null;
+            _scanProcessing = false;
         }
 
     </script>
