@@ -170,7 +170,7 @@ function initLayout(activePage) {
                     <div class="flex items-center gap-3 px-2 mb-8">
                         <img src="logo.png" alt="Logo" class="h-11 w-11 rounded-xl object-contain flex-shrink-0">
                         <div>
-                            <h2 class="font-bold text-slate-800 text-base leading-tight">Arrahma POS</h2>
+                            <h2 class="font-bold text-slate-800 text-base leading-tight">BayARRA!:</h2>
                             <span class="text-xs text-gray-500 font-medium">Sistem Kasir Toko</span>
                         </div>
                     </div>
