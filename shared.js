@@ -44,13 +44,22 @@ function initLayout(activePage) {
         return;
     }
 
-    // Inject sidebar & mobile styles once
+    // Inject sidebar & responsive styles once
     if (!document.getElementById("shared-mobile-styles")) {
         const style = document.createElement("style");
         style.id = "shared-mobile-styles";
         style.textContent = `
-            /* --- Mobile Sidebar --- */
-            @media (max-width: 767px) {
+            body {
+                overflow-x: clip;
+                min-height: 100dvh;
+            }
+            body > main,
+            body > div > main {
+                min-width: 0;
+                width: 100%;
+            }
+            /* --- Drawer Sidebar (Mobile Portrait & Rotated Mobile Landscape) --- */
+            @media (max-width: 767px), (max-height: 500px) and (orientation: landscape) {
                 #sidebar {
                     position: fixed !important;
                     left: 0; top: 0; bottom: 0;
@@ -61,9 +70,11 @@ function initLayout(activePage) {
                     height: 100dvh !important;
                     overflow-y: auto;
                     box-shadow: 4px 0 24px rgba(0,0,0,.12);
+                    opacity: 1 !important;
+                    pointer-events: auto !important;
                 }
                 #sidebar.sidebar-open {
-                    display: block !important;
+                    display: flex !important;
                     transform: translateX(0);
                 }
                 #sidebar-overlay {
@@ -84,10 +95,23 @@ function initLayout(activePage) {
                 body > main,
                 body > div > main {
                     padding-top: 4rem !important;
+                    padding-left: 1rem !important;
                 }
             }
-            @media (min-width: 768px) {
+            /* --- Landscape short-screen modal & scanner adjustments --- */
+            @media (max-height: 500px) and (orientation: landscape) {
+                [id$="-modal"] > div {
+                    max-height: 92dvh !important;
+                    overflow-y: auto !important;
+                }
+            }
+            /* --- Tablet & Desktop Collapsible Sidebar --- */
+            @media (min-width: 768px) and (min-height: 501px), (min-width: 768px) and (orientation: portrait) {
                 #hamburger-btn { display: none !important; }
+                #sidebar {
+                    height: 100dvh;
+                    overflow-y: auto;
+                }
                 body.sidebar-collapsed #sidebar {
                     width: 0 !important;
                     min-width: 0 !important;
@@ -105,6 +129,11 @@ function initLayout(activePage) {
                     padding-left: 4.75rem !important;
                 }
             }
+            @media (min-width: 768px) and (max-width: 1023px) and (min-height: 501px) {
+                #sidebar {
+                    width: 14rem;
+                }
+            }
             @media print {
                 #hamburger-btn,
                 #sidebar-overlay {
@@ -114,6 +143,21 @@ function initLayout(activePage) {
             #hamburger-btn { display: none; }
         `;
         document.head.appendChild(style);
+    }
+
+    // Sync drawer/overlay state on device rotation or resize
+    if (!window._sidebarResizeBound) {
+        window._sidebarResizeBound = true;
+        const syncOnViewportChange = () => {
+            if (!isDrawerMode()) {
+                const sidebar = document.getElementById("sidebar");
+                const overlay = document.getElementById("sidebar-overlay");
+                if (sidebar) sidebar.classList.remove("sidebar-open");
+                if (overlay) overlay.classList.remove("sidebar-open");
+            }
+        };
+        window.addEventListener("resize", syncOnViewportChange);
+        window.addEventListener("orientationchange", syncOnViewportChange);
     }
 
     // Restore desktop sidebar collapsed state
@@ -244,9 +288,14 @@ function initLayout(activePage) {
     }
 }
 
-// Toggle sidebar (mobile drawer & desktop collapse)
+// True on mobile portrait or rotated short landscape screens
+function isDrawerMode() {
+    return window.matchMedia("(max-width: 767px), (max-height: 500px) and (orientation: landscape)").matches;
+}
+
+// Toggle sidebar (mobile/landscape drawer & tablet/desktop collapse)
 function toggleSidebar() {
-    if (window.innerWidth < 768) {
+    if (isDrawerMode()) {
         const sidebar = document.getElementById("sidebar");
         const overlay = document.getElementById("sidebar-overlay");
         if (!sidebar) return;
@@ -259,7 +308,7 @@ function toggleSidebar() {
 }
 
 function closeSidebar() {
-    if (window.innerWidth < 768) {
+    if (isDrawerMode()) {
         const sidebar = document.getElementById("sidebar");
         const overlay = document.getElementById("sidebar-overlay");
         if (sidebar) sidebar.classList.remove("sidebar-open");
