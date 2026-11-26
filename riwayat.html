@@ -9,8 +9,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- SheetJS for Excel Export -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- SheetJS with Styling for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -467,66 +467,325 @@
             setTimeout(() => modal.classList.add("hidden"), 300);
         }
 
-        // Export visible transactions to Excel
-        function exportToExcel() {
+        // Export visible transactions to styled Excel workbook
+        async function exportToExcel() {
             if (allTransactions.length === 0) {
                 alert("Tidak ada data untuk diekspor! Tampilkan data terlebih dahulu.");
                 return;
             }
 
-            const dari = document.getElementById("filter-dari").value;
-            const sampai = document.getElementById("filter-sampai").value;
+            const btn = document.getElementById("btn-export");
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.textContent = "Menyiapkan Excel...";
 
-            // Build worksheet data
-            const wsData = [
-                ["Laporan Riwayat Transaksi Toko Arrahma"],
-                [`Periode: ${dari} s/d ${sampai}`],
-                [`Dicetak: ${new Date().toLocaleString("id-ID")}`],
-                [],
-                ["No", "No Struk", "Waktu Transaksi", "Pelanggan", "Metode Bayar", "Total Belanja", "Nominal Bayar", "Status"]
-            ];
+            try {
+                const dari = document.getElementById("filter-dari").value;
+                const sampai = document.getElementById("filter-sampai").value;
+                const saleIds = allTransactions.map(s => s.id);
 
-            allTransactions.forEach((s, idx) => {
-                const waktu = new Date(s.created_at).toLocaleString("id-ID");
-                const pelanggan = s.customers ? s.customers.nama : '-';
-                const debtRecord = Array.isArray(s.debts) ? s.debts[0] : s.debts;
-                const debtLunas = debtRecord && (debtRecord.sisa_hutang === 0 || debtRecord.status === 'LUNAS');
-                const isLunas = parseFloat(s.nominal_dibayar || 0) >= parseFloat(s.total_belanja || 0) || debtLunas;
-                const status = isLunas ? "Lunas" : "Hutang";
+                // Fetch sale_details for all listed transactions (chunked in 200s for URL safety)
+                const allDetails = [];
+                for (let i = 0; i < saleIds.length; i += 200) {
+                    const chunk = saleIds.slice(i, i + 200);
+                    const { data: detChunk, error: detErr } = await supabaseClient
+                        .from("sale_details")
+                        .select("sale_id, qty_jual, harga_jual, product_units(product_id, qty_konversi, nama_satuan, products(nama_barang))")
+                        .in("sale_id", chunk);
+                    if (detErr) throw detErr;
+                    if (detChunk) allDetails.push(...detChunk);
+                }
 
-                wsData.push([
-                    idx + 1,
-                    s.no_struk || '-',
-                    waktu,
-                    pelanggan,
-                    s.metode_bayar || '-',
-                    parseFloat(s.total_belanja || 0),
-                    parseFloat(s.nominal_dibayar || 0),
-                    status
-                ]);
-            });
+                // Fetch latest non-null harga_beli per product from purchases
+                const productIds = [...new Set(
+                    allDetails.map(d => d.product_units?.product_id).filter(Boolean)
+                )];
+                const costMap = {};
+                for (let i = 0; i < productIds.length; i += 200) {
+                    const chunk = productIds.slice(i, i + 200);
+                    const { data: purchases, error: purErr } = await supabaseClient
+                        .from("purchases")
+                        .select("product_id, harga_beli, tgl_belanja, created_at")
+                        .in("product_id", chunk)
+                        .order("tgl_belanja", { ascending: false })
+                        .order("created_at", { ascending: false });
+                    if (purErr) throw purErr;
+                    (purchases || []).forEach(p => {
+                        if (p.product_id && costMap[p.product_id] == null && p.harga_beli != null) {
+                            costMap[p.product_id] = parseFloat(p.harga_beli) || 0;
+                        }
+                    });
+                }
 
-            // Summary row
-            const totalOmzet = allTransactions.reduce((s, t) => s + parseFloat(t.total_belanja || 0), 0);
-            wsData.push([]);
-            wsData.push(["", "", "", "", "TOTAL OMZET", totalOmzet, "", ""]);
-            wsData.push(["", "", "", "", "TOTAL TRANSAKSI", allTransactions.length, "", ""]);
+                // Compute profit per sale_id and item breakdown
+                const profitBySaleId = {};
+                const saleMap = {};
+                allTransactions.forEach(s => { saleMap[s.id] = s; });
 
-            // Create workbook
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(wsData);
+                const itemRows = [];
+                allDetails.forEach(d => {
+                    const productId = d.product_units?.product_id;
+                    const qtyKonversi = parseFloat(d.product_units?.qty_konversi) || 1;
+                    const hargaJual = parseFloat(d.harga_jual) || 0;
+                    const hargaBeliDasar = productId ? (costMap[productId] || 0) : 0;
+                    const hargaBeli = hargaBeliDasar * qtyKonversi;
+                    const qty = parseInt(d.qty_jual) || 0;
+                    const untung = (hargaJual - hargaBeli) * qty;
 
-            // Column widths
-            ws['!cols'] = [
-                { wch: 5 }, { wch: 22 }, { wch: 22 }, { wch: 20 },
-                { wch: 15 }, { wch: 18 }, { wch: 15 }, { wch: 10 }
-            ];
+                    profitBySaleId[d.sale_id] = (profitBySaleId[d.sale_id] || 0) + untung;
 
-            XLSX.utils.book_append_sheet(wb, ws, "Riwayat Transaksi");
+                    const sale = saleMap[d.sale_id];
+                    itemRows.push({
+                        noStruk: sale?.no_struk || "-",
+                        waktu: sale ? new Date(sale.created_at).toLocaleString("id-ID") : "-",
+                        produk: d.product_units?.products?.nama_barang || "Produk",
+                        satuan: d.product_units?.nama_satuan || "-",
+                        qty,
+                        hargaJual,
+                        hargaBeli,
+                        keuntungan: untung
+                    });
+                });
 
-            // Download file
-            const fileName = `Riwayat_Transaksi_${dari}_sd_${sampai}.xlsx`;
-            XLSX.writeFile(wb, fileName);
+                const totalOmzet = allTransactions.reduce((sum, t) => sum + parseFloat(t.total_belanja || 0), 0);
+                const totalDibayar = allTransactions.reduce((sum, t) => sum + parseFloat(t.nominal_dibayar || 0), 0);
+                const totalKeuntungan = allTransactions.reduce((sum, t) => sum + (profitBySaleId[t.id] || 0), 0);
+
+                // Shared Excel cell styles
+                const thinBorder = {
+                    top: { style: "thin", color: { rgb: "CBD5E1" } },
+                    bottom: { style: "thin", color: { rgb: "CBD5E1" } },
+                    left: { style: "thin", color: { rgb: "CBD5E1" } },
+                    right: { style: "thin", color: { rgb: "CBD5E1" } }
+                };
+                const titleStyle = {
+                    font: { bold: true, sz: 14, color: { rgb: "FFFFFF" } },
+                    fill: { fgColor: { rgb: "1E3A8A" } },
+                    alignment: { horizontal: "center", vertical: "center" }
+                };
+                const metaStyle = {
+                    font: { sz: 10, color: { rgb: "475569" } },
+                    alignment: { horizontal: "left", vertical: "center" }
+                };
+                const kpiLabelStyle = {
+                    font: { bold: true, sz: 10, color: { rgb: "334155" } },
+                    fill: { fgColor: { rgb: "F1F5F9" } },
+                    border: thinBorder,
+                    alignment: { horizontal: "left", vertical: "center" }
+                };
+                const kpiValStyle = {
+                    font: { bold: true, sz: 11, color: { rgb: "1E40AF" } },
+                    fill: { fgColor: { rgb: "EFF6FF" } },
+                    border: thinBorder,
+                    alignment: { horizontal: "right", vertical: "center" },
+                    numFmt: '"Rp "#,##0'
+                };
+                const headerStyle = {
+                    font: { bold: true, sz: 10, color: { rgb: "FFFFFF" } },
+                    fill: { fgColor: { rgb: "2563EB" } },
+                    border: thinBorder,
+                    alignment: { horizontal: "center", vertical: "center", wrapText: true }
+                };
+                const totalRowStyle = {
+                    font: { bold: true, sz: 10, color: { rgb: "0F172A" } },
+                    fill: { fgColor: { rgb: "DBEAFE" } },
+                    border: {
+                        top: { style: "medium", color: { rgb: "2563EB" } },
+                        bottom: { style: "medium", color: { rgb: "2563EB" } },
+                        left: { style: "thin", color: { rgb: "CBD5E1" } },
+                        right: { style: "thin", color: { rgb: "CBD5E1" } }
+                    }
+                };
+
+                const setStyle = (ws, r, c, style) => {
+                    const addr = XLSX.utils.encode_cell({ r, c });
+                    if (!ws[addr]) ws[addr] = { v: "", t: "s" };
+                    ws[addr].s = style;
+                };
+
+                // --- SHEET 1: Riwayat Transaksi ---
+                const ws1Data = [
+                    ["LAPORAN RIWAYAT TRANSAKSI - TOKO ARRAHMA", "", "", "", "", "", "", "", ""],
+                    [`Periode: ${dari} s/d ${sampai}`, "", "", "", "", "", "", "", ""],
+                    [`Dicetak: ${new Date().toLocaleString("id-ID")}`, "", "", "", "", "", "", "", ""],
+                    [],
+                    ["Ringkasan", "Total Transaksi", allTransactions.length, "", "Total Omzet", totalOmzet, "", "Total Keuntungan", totalKeuntungan],
+                    [],
+                    ["No", "No Struk", "Waktu Transaksi", "Pelanggan", "Metode Bayar", "Total Belanja", "Nominal Bayar", "Keuntungan", "Status"]
+                ];
+
+                const dataStartRow1 = ws1Data.length;
+                allTransactions.forEach((s, idx) => {
+                    const waktu = new Date(s.created_at).toLocaleString("id-ID");
+                    const pelanggan = s.customers ? s.customers.nama : "-";
+                    const debtRecord = Array.isArray(s.debts) ? s.debts[0] : s.debts;
+                    const debtLunas = debtRecord && (debtRecord.sisa_hutang === 0 || debtRecord.status === "LUNAS");
+                    const isLunas = parseFloat(s.nominal_dibayar || 0) >= parseFloat(s.total_belanja || 0) || debtLunas;
+                    const status = isLunas ? "Lunas" : "Hutang";
+                    const profit = profitBySaleId[s.id] || 0;
+
+                    ws1Data.push([
+                        idx + 1,
+                        s.no_struk || "-",
+                        waktu,
+                        pelanggan,
+                        s.metode_bayar || "-",
+                        parseFloat(s.total_belanja || 0),
+                        parseFloat(s.nominal_dibayar || 0),
+                        profit,
+                        status
+                    ]);
+                });
+
+                const totalRowIdx1 = ws1Data.length;
+                ws1Data.push(["", "", "", "", "TOTAL", totalOmzet, totalDibayar, totalKeuntungan, ""]);
+
+                const wb = XLSX.utils.book_new();
+                const ws1 = XLSX.utils.aoa_to_sheet(ws1Data);
+
+                ws1["!merges"] = [
+                    { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+                    { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
+                    { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } }
+                ];
+                ws1["!cols"] = [
+                    { wch: 6 }, { wch: 22 }, { wch: 22 }, { wch: 20 },
+                    { wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 12 }
+                ];
+                ws1["!rows"] = [
+                    { hpt: 28 }, { hpt: 18 }, { hpt: 18 }, { hpt: 10 }, { hpt: 24 }, { hpt: 10 }, { hpt: 24 }
+                ];
+
+                for (let c = 0; c <= 8; c++) {
+                    setStyle(ws1, 0, c, titleStyle);
+                    setStyle(ws1, 1, c, metaStyle);
+                    setStyle(ws1, 2, c, metaStyle);
+                    setStyle(ws1, 6, c, headerStyle);
+                }
+                setStyle(ws1, 4, 0, kpiLabelStyle);
+                setStyle(ws1, 4, 1, kpiLabelStyle);
+                setStyle(ws1, 4, 2, { ...kpiValStyle, numFmt: "#,##0" });
+                setStyle(ws1, 4, 4, kpiLabelStyle);
+                setStyle(ws1, 4, 5, kpiValStyle);
+                setStyle(ws1, 4, 7, kpiLabelStyle);
+                setStyle(ws1, 4, 8, { ...kpiValStyle, font: { bold: true, sz: 11, color: { rgb: "047857" } }, fill: { fgColor: { rgb: "ECFDF5" } } });
+
+                for (let r = dataStartRow1; r < totalRowIdx1; r++) {
+                    const zebra = (r - dataStartRow1) % 2 === 1 ? "F8FAFC" : "FFFFFF";
+                    const base = { font: { sz: 10, color: { rgb: "1E293B" } }, fill: { fgColor: { rgb: zebra } }, border: thinBorder, alignment: { vertical: "center" } };
+                    setStyle(ws1, r, 0, { ...base, alignment: { horizontal: "center", vertical: "center" } });
+                    setStyle(ws1, r, 1, base);
+                    setStyle(ws1, r, 2, base);
+                    setStyle(ws1, r, 3, base);
+                    setStyle(ws1, r, 4, { ...base, alignment: { horizontal: "center", vertical: "center" } });
+                    setStyle(ws1, r, 5, { ...base, alignment: { horizontal: "right", vertical: "center" }, numFmt: '"Rp "#,##0' });
+                    setStyle(ws1, r, 6, { ...base, alignment: { horizontal: "right", vertical: "center" }, numFmt: '"Rp "#,##0' });
+                    const profitVal = ws1Data[r][7];
+                    setStyle(ws1, r, 7, {
+                        ...base,
+                        font: { bold: true, sz: 10, color: { rgb: profitVal >= 0 ? "047857" : "BE123C" } },
+                        alignment: { horizontal: "right", vertical: "center" },
+                        numFmt: '"Rp "#,##0'
+                    });
+                    const isLunas = ws1Data[r][8] === "Lunas";
+                    setStyle(ws1, r, 8, {
+                        ...base,
+                        font: { bold: true, sz: 10, color: { rgb: isLunas ? "047857" : "BE123C" } },
+                        fill: { fgColor: { rgb: isLunas ? "ECFDF5" : "FFF1F2" } },
+                        alignment: { horizontal: "center", vertical: "center" }
+                    });
+                }
+
+                for (let c = 0; c <= 8; c++) {
+                    const isCurrency = c >= 5 && c <= 7;
+                    setStyle(ws1, totalRowIdx1, c, {
+                        ...totalRowStyle,
+                        alignment: { horizontal: isCurrency ? "right" : (c === 4 ? "center" : "left"), vertical: "center" },
+                        ...(isCurrency ? { numFmt: '"Rp "#,##0' } : {})
+                    });
+                }
+
+                XLSX.utils.book_append_sheet(wb, ws1, "Riwayat Transaksi");
+
+                // --- SHEET 2: Rincian Keuntungan per Item ---
+                const ws2Data = [
+                    ["RINCIAN KEUNTUNGAN PER ITEM - TOKO ARRAHMA", "", "", "", "", "", "", "", ""],
+                    [`Periode: ${dari} s/d ${sampai}`, "", "", "", "", "", "", "", ""],
+                    [],
+                    ["No", "No Struk", "Waktu Transaksi", "Nama Produk", "Satuan", "Qty", "Harga Jual", "Harga Beli", "Keuntungan"]
+                ];
+                const dataStartRow2 = ws2Data.length;
+                itemRows.forEach((it, idx) => {
+                    ws2Data.push([
+                        idx + 1,
+                        it.noStruk,
+                        it.waktu,
+                        it.produk,
+                        it.satuan,
+                        it.qty,
+                        it.hargaJual,
+                        it.hargaBeli,
+                        it.keuntungan
+                    ]);
+                });
+                const totalRowIdx2 = ws2Data.length;
+                const totalItemProfit = itemRows.reduce((s, it) => s + it.keuntungan, 0);
+                ws2Data.push(["", "", "", "", "", "", "", "TOTAL KEUNTUNGAN", totalItemProfit]);
+
+                const ws2 = XLSX.utils.aoa_to_sheet(ws2Data);
+                ws2["!merges"] = [
+                    { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+                    { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }
+                ];
+                ws2["!cols"] = [
+                    { wch: 6 }, { wch: 22 }, { wch: 22 }, { wch: 26 },
+                    { wch: 12 }, { wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 18 }
+                ];
+                ws2["!rows"] = [{ hpt: 28 }, { hpt: 18 }, { hpt: 10 }, { hpt: 24 }];
+
+                for (let c = 0; c <= 8; c++) {
+                    setStyle(ws2, 0, c, titleStyle);
+                    setStyle(ws2, 1, c, metaStyle);
+                    setStyle(ws2, 3, c, headerStyle);
+                }
+                for (let r = dataStartRow2; r < totalRowIdx2; r++) {
+                    const zebra = (r - dataStartRow2) % 2 === 1 ? "F8FAFC" : "FFFFFF";
+                    const base = { font: { sz: 10, color: { rgb: "1E293B" } }, fill: { fgColor: { rgb: zebra } }, border: thinBorder, alignment: { vertical: "center" } };
+                    setStyle(ws2, r, 0, { ...base, alignment: { horizontal: "center", vertical: "center" } });
+                    setStyle(ws2, r, 1, base);
+                    setStyle(ws2, r, 2, base);
+                    setStyle(ws2, r, 3, base);
+                    setStyle(ws2, r, 4, { ...base, alignment: { horizontal: "center", vertical: "center" } });
+                    setStyle(ws2, r, 5, { ...base, alignment: { horizontal: "center", vertical: "center" } });
+                    setStyle(ws2, r, 6, { ...base, alignment: { horizontal: "right", vertical: "center" }, numFmt: '"Rp "#,##0' });
+                    setStyle(ws2, r, 7, { ...base, alignment: { horizontal: "right", vertical: "center" }, numFmt: '"Rp "#,##0' });
+                    const pVal = ws2Data[r][8];
+                    setStyle(ws2, r, 8, {
+                        ...base,
+                        font: { bold: true, sz: 10, color: { rgb: pVal >= 0 ? "047857" : "BE123C" } },
+                        alignment: { horizontal: "right", vertical: "center" },
+                        numFmt: '"Rp "#,##0'
+                    });
+                }
+                for (let c = 0; c <= 8; c++) {
+                    setStyle(ws2, totalRowIdx2, c, {
+                        ...totalRowStyle,
+                        alignment: { horizontal: c === 8 ? "right" : (c === 7 ? "center" : "left"), vertical: "center" },
+                        ...(c === 8 ? { numFmt: '"Rp "#,##0' } : {})
+                    });
+                }
+
+                XLSX.utils.book_append_sheet(wb, ws2, "Rincian Keuntungan");
+
+                const fileName = `Riwayat_Transaksi_${dari}_sd_${sampai}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+            } catch (err) {
+                console.error("Excel export error:", err);
+                alert("Gagal mengekspor Excel: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
         }
     </script>
 </body>
