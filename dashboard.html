@@ -131,20 +131,27 @@
             </div>
 
             <!-- Keuntungan Hari Ini Card -->
-            <div
-                class="glass-card rounded-2xl p-4 md:p-6 shadow-sm flex items-center gap-3 md:gap-5 hover:shadow-md transition duration-300 sm:col-span-2 lg:col-span-3 xl:col-span-2 2xl:col-span-1">
+            <div onclick="openProfitModal()" role="button" tabindex="0"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProfitModal();}"
+                class="glass-card rounded-2xl p-4 md:p-6 shadow-sm flex items-center gap-3 md:gap-5 hover:shadow-md hover:border-rose-300 transition duration-300 cursor-pointer sm:col-span-2 lg:col-span-3 xl:col-span-2 2xl:col-span-1">
                 <div
                     class="bg-gradient-to-tr from-rose-100 to-pink-50 text-rose-600 p-3 md:p-4 rounded-xl flex-shrink-0">
                     <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
                 </div>
-                <div>
+                <div class="min-w-0 flex-1">
                     <span class="text-xs text-slate-500 font-semibold block uppercase tracking-wider">Keuntungan
                         Hari Ini</span>
                     <h3 id="stat-keuntungan" class="text-xl font-bold text-slate-800 mt-1">
                         <span class="text-sm font-medium text-slate-400">Menghitung...</span>
                     </h3>
+                    <span class="text-[11px] text-rose-600 font-semibold mt-1 inline-flex items-center gap-1">
+                        Lihat rincian
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </span>
                 </div>
             </div>
 
@@ -201,6 +208,62 @@
         </section>
     </main>
 
+    <!-- Modal Rincian Keuntungan Hari Ini -->
+    <div id="profit-modal" onclick="if(event.target===this) closeProfitModal()"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div id="profit-modal-card"
+            class="bg-white rounded-3xl shadow-xl w-full max-w-3xl max-h-[90dvh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 overflow-hidden">
+            <div class="p-5 md:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/60">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Rincian Keuntungan Hari Ini</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Perhitungan: (Harga Jual - Harga Beli) × Qty Terjual</p>
+                </div>
+                <button onclick="closeProfitModal()" aria-label="Tutup"
+                    class="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-5 md:p-6 overflow-y-auto space-y-5">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-4">
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Total Penjualan</span>
+                        <p id="profit-modal-total-jual" class="text-base md:text-lg font-bold text-slate-800 mt-1">Rp 0</p>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-4">
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Total Harga Beli</span>
+                        <p id="profit-modal-total-beli" class="text-base md:text-lg font-bold text-slate-800 mt-1">Rp 0</p>
+                    </div>
+                    <div class="rounded-2xl bg-rose-50 border border-rose-100 p-4">
+                        <span class="text-xs font-semibold text-rose-600 uppercase">Total Keuntungan</span>
+                        <p id="profit-modal-total-untung" class="text-base md:text-lg font-bold text-rose-700 mt-1">Rp 0</p>
+                    </div>
+                </div>
+
+                <div class="border border-slate-100 rounded-2xl overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-100">
+                                <th class="px-4 py-3">Produk</th>
+                                <th class="px-4 py-3 text-center">Qty</th>
+                                <th class="px-4 py-3 text-right">Harga Jual</th>
+                                <th class="px-4 py-3 text-right">Harga Beli</th>
+                                <th class="px-4 py-3 text-right">Keuntungan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="profit-modal-body" class="divide-y divide-slate-100 text-slate-700">
+                            <tr>
+                                <td colspan="5" class="text-center py-8 text-slate-400">Belum ada penjualan hari ini.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Shared JS Setup -->
     <script src="shared.js"></script>
     <script>
@@ -238,6 +301,59 @@
             }, 1000);
         }
 
+        let todayProfitSummary = {
+            totalJual: 0,
+            totalBeli: 0,
+            totalUntung: 0,
+            items: []
+        };
+
+        function openProfitModal() {
+            const modal = document.getElementById("profit-modal");
+            const card = document.getElementById("profit-modal-card");
+            if (!modal || !card) return;
+
+            document.getElementById("profit-modal-total-jual").textContent = formatRupiah(todayProfitSummary.totalJual);
+            document.getElementById("profit-modal-total-beli").textContent = formatRupiah(todayProfitSummary.totalBeli);
+            document.getElementById("profit-modal-total-untung").textContent = formatRupiah(todayProfitSummary.totalUntung);
+
+            const tbody = document.getElementById("profit-modal-body");
+            if (!todayProfitSummary.items || todayProfitSummary.items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400">Belum ada penjualan hari ini.</td></tr>`;
+            } else {
+                tbody.innerHTML = todayProfitSummary.items.map(item => {
+                    const profitCls = item.keuntungan >= 0 ? "text-emerald-600" : "text-rose-600";
+                    return `
+                        <tr class="hover:bg-slate-50/70">
+                            <td class="px-4 py-3">
+                                <div class="font-semibold text-slate-800">${item.nama}</div>
+                                <div class="text-xs text-slate-400">${item.satuan}</div>
+                            </td>
+                            <td class="px-4 py-3 text-center font-semibold">${item.qty}</td>
+                            <td class="px-4 py-3 text-right">${formatRupiah(item.hargaJual)}</td>
+                            <td class="px-4 py-3 text-right">${formatRupiah(item.hargaBeli)}</td>
+                            <td class="px-4 py-3 text-right font-bold ${profitCls}">${formatRupiah(item.keuntungan)}</td>
+                        </tr>
+                    `;
+                }).join("");
+            }
+
+            modal.classList.remove("hidden");
+            requestAnimationFrame(() => {
+                card.classList.remove("scale-95", "opacity-0");
+                card.classList.add("scale-100", "opacity-100");
+            });
+        }
+
+        function closeProfitModal() {
+            const modal = document.getElementById("profit-modal");
+            const card = document.getElementById("profit-modal-card");
+            if (!modal || !card) return;
+            card.classList.add("scale-95", "opacity-0");
+            card.classList.remove("scale-100", "opacity-100");
+            setTimeout(() => modal.classList.add("hidden"), 200);
+        }
+
         // Hitung keuntungan bersih hari ini dari sale_details
         async function loadProfitToday() {
             const el = document.getElementById("stat-keuntungan");
@@ -247,16 +363,17 @@
                 const endOfDay = new Date();
                 endOfDay.setHours(23, 59, 59, 999);
 
-                // Ambil sale_details hari ini beserta harga_jual, qty, product_id, dan qty_konversi
+                // Ambil sale_details hari ini beserta harga_jual, qty, product_id, nama_barang, nama_satuan, dan qty_konversi
                 const { data: details, error: detErr } = await supabaseClient
                     .from("sale_details")
-                    .select("qty_jual, harga_jual, product_units(product_id, qty_konversi), sales!inner(created_at)")
+                    .select("qty_jual, harga_jual, product_units(product_id, qty_konversi, nama_satuan, products(nama_barang)), sales!inner(created_at)")
                     .gte("sales.created_at", startOfDay.toISOString())
                     .lte("sales.created_at", endOfDay.toISOString());
 
                 if (detErr) throw detErr;
 
                 if (!details || details.length === 0) {
+                    todayProfitSummary = { totalJual: 0, totalBeli: 0, totalUntung: 0, items: [] };
                     el.textContent = formatRupiah(0);
                     return;
                 }
@@ -286,15 +403,39 @@
 
                 // Hitung total keuntungan: S (harga_jual - harga_beli) � qty_jual
                 let totalProfit = 0;
+                let totalJual = 0;
+                let totalBeli = 0;
+                const groupedMap = {};
+
                 details.forEach(d => {
                     const productId = d.product_units?.product_id;
+                    const nama = d.product_units?.products?.nama_barang || "Produk";
+                    const satuan = d.product_units?.nama_satuan || "-";
                     const qtyKonversi = parseFloat(d.product_units?.qty_konversi) || 1;
                     const hargaJual = parseFloat(d.harga_jual) || 0;
                     const hargaBeliDasar = productId ? (costMap[productId] || 0) : 0;
                     const hargaBeli = hargaBeliDasar * qtyKonversi;
                     const qty = parseInt(d.qty_jual) || 0;
-                    totalProfit += (hargaJual - hargaBeli) * qty;
+                    const untung = (hargaJual - hargaBeli) * qty;
+
+                    totalJual += hargaJual * qty;
+                    totalBeli += hargaBeli * qty;
+                    totalProfit += untung;
+
+                    const key = `${productId || nama}_${satuan}_${hargaJual}_${hargaBeli}`;
+                    if (!groupedMap[key]) {
+                        groupedMap[key] = { nama, satuan, qty: 0, hargaJual, hargaBeli, keuntungan: 0 };
+                    }
+                    groupedMap[key].qty += qty;
+                    groupedMap[key].keuntungan += untung;
                 });
+
+                todayProfitSummary = {
+                    totalJual,
+                    totalBeli,
+                    totalUntung: totalProfit,
+                    items: Object.values(groupedMap).sort((a, b) => b.keuntungan - a.keuntungan)
+                };
 
                 el.textContent = formatRupiah(totalProfit);
 
