@@ -44,7 +44,7 @@ function initLayout(activePage) {
         return;
     }
 
-    // Inject mobile styles once
+    // Inject sidebar & mobile styles once
     if (!document.getElementById("shared-mobile-styles")) {
         const style = document.createElement("style");
         style.id = "shared-mobile-styles";
@@ -88,10 +88,37 @@ function initLayout(activePage) {
             }
             @media (min-width: 768px) {
                 #hamburger-btn { display: none !important; }
+                body.sidebar-collapsed #sidebar {
+                    width: 0 !important;
+                    min-width: 0 !important;
+                    padding: 0 !important;
+                    border-right-width: 0 !important;
+                    overflow: hidden !important;
+                    opacity: 0;
+                    pointer-events: none;
+                }
+                body.sidebar-collapsed #hamburger-btn {
+                    display: flex !important;
+                }
+                body.sidebar-collapsed > main,
+                body.sidebar-collapsed > div > main {
+                    padding-left: 4.75rem !important;
+                }
+            }
+            @media print {
+                #hamburger-btn,
+                #sidebar-overlay {
+                    display: none !important;
+                }
             }
             #hamburger-btn { display: none; }
         `;
         document.head.appendChild(style);
+    }
+
+    // Restore desktop sidebar collapsed state
+    if (localStorage.getItem("sidebarCollapsed") === "true") {
+        document.body.classList.add("sidebar-collapsed");
     }
 
     // Inject dark overlay behind sidebar on mobile
@@ -165,14 +192,22 @@ function initLayout(activePage) {
         }).join("");
 
         sidebarEl.innerHTML = `
-            <div class="h-full flex flex-col justify-between py-6 px-4">
+            <div class="h-full w-64 flex flex-col justify-between py-6 px-4">
                 <div>
-                    <div class="flex items-center gap-3 px-2 mb-8">
-                        <img src="logo.png" alt="Logo" class="h-11 w-11 rounded-xl object-contain flex-shrink-0">
-                        <div>
-                            <h2 class="font-bold text-slate-800 text-base leading-tight">BayARRA!:</h2>
-                            <span class="text-xs text-gray-500 font-medium">Sistem Kasir Toko</span>
+                    <div class="flex items-center justify-between gap-2 px-2 mb-8">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <img src="logo.png" alt="Logo" class="h-11 w-11 rounded-xl object-contain flex-shrink-0">
+                            <div class="min-w-0">
+                                <h2 class="font-bold text-slate-800 text-base leading-tight">BayARRA!:</h2>
+                                <span class="text-xs text-gray-500 font-medium">Sistem Kasir Toko</span>
+                            </div>
                         </div>
+                        <button onclick="toggleSidebar()" title="Tutup Sidebar" aria-label="Tutup Sidebar"
+                            class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition flex-shrink-0">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                            </svg>
+                        </button>
                     </div>
                     <nav class="space-y-1">${listHtml}</nav>
                 </div>
@@ -209,20 +244,27 @@ function initLayout(activePage) {
     }
 }
 
-// Toggle sidebar for mobile
+// Toggle sidebar (mobile drawer & desktop collapse)
 function toggleSidebar() {
-    const sidebar = document.getElementById("sidebar");
-    const overlay = document.getElementById("sidebar-overlay");
-    if (!sidebar) return;
-    sidebar.classList.toggle("sidebar-open");
-    if (overlay) overlay.classList.toggle("sidebar-open");
+    if (window.innerWidth < 768) {
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("sidebar-overlay");
+        if (!sidebar) return;
+        sidebar.classList.toggle("sidebar-open");
+        if (overlay) overlay.classList.toggle("sidebar-open");
+    } else {
+        const isCollapsed = document.body.classList.toggle("sidebar-collapsed");
+        localStorage.setItem("sidebarCollapsed", isCollapsed ? "true" : "false");
+    }
 }
 
 function closeSidebar() {
-    const sidebar = document.getElementById("sidebar");
-    const overlay = document.getElementById("sidebar-overlay");
-    if (sidebar) sidebar.classList.remove("sidebar-open");
-    if (overlay) overlay.classList.remove("sidebar-open");
+    if (window.innerWidth < 768) {
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("sidebar-overlay");
+        if (sidebar) sidebar.classList.remove("sidebar-open");
+        if (overlay) overlay.classList.remove("sidebar-open");
+    }
 }
 
 // Log out user
