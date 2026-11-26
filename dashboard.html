@@ -247,10 +247,10 @@
                 const endOfDay = new Date();
                 endOfDay.setHours(23, 59, 59, 999);
 
-                // Ambil sale_details hari ini beserta harga_jual, qty, dan product_id
+                // Ambil sale_details hari ini beserta harga_jual, qty, product_id, dan qty_konversi
                 const { data: details, error: detErr } = await supabaseClient
                     .from("sale_details")
-                    .select("qty_jual, harga_jual, product_units(product_id), sales!inner(created_at)")
+                    .select("qty_jual, harga_jual, product_units(product_id, qty_konversi), sales!inner(created_at)")
                     .gte("sales.created_at", startOfDay.toISOString())
                     .lte("sales.created_at", endOfDay.toISOString());
 
@@ -279,7 +279,7 @@
                 // Buat map: product_id ? harga_beli terakhir
                 const costMap = {};
                 (purchases || []).forEach(p => {
-                    if (p.product_id && costMap[p.product_id] == null) {
+                    if (p.product_id && costMap[p.product_id] == null && p.harga_beli != null) {
                         costMap[p.product_id] = parseFloat(p.harga_beli) || 0;
                     }
                 });
@@ -288,13 +288,15 @@
                 let totalProfit = 0;
                 details.forEach(d => {
                     const productId = d.product_units?.product_id;
+                    const qtyKonversi = parseFloat(d.product_units?.qty_konversi) || 1;
                     const hargaJual = parseFloat(d.harga_jual) || 0;
-                    const hargaBeli = productId ? (costMap[productId] || 0) : 0;
+                    const hargaBeliDasar = productId ? (costMap[productId] || 0) : 0;
+                    const hargaBeli = hargaBeliDasar * qtyKonversi;
                     const qty = parseInt(d.qty_jual) || 0;
                     totalProfit += (hargaJual - hargaBeli) * qty;
                 });
 
-                el.textContent = formatRupiah(Math.max(0, totalProfit));
+                el.textContent = formatRupiah(totalProfit);
 
             } catch (err) {
                 console.error("Profit calculation error:", err);
